@@ -24,7 +24,7 @@ from drf_spectacular.views import (
 )
 
 from authentication.views import JWKSView
-from users.pages import ResetPasswordPage, VerifyEmailPage
+from users.pages import ForgotPasswordPage, ResetPasswordPage, VerifyEmailPage
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -44,7 +44,9 @@ urlpatterns = [
     # Public keys that verify issued tokens
     path(".well-known/jwks.json",JWKSView.as_view(),name="jwks",),
 
-    # Pages linked from emails
+    # Pages for users: forgot password (linked from applications' login
+    # pages) and the pages the emailed links open
+    path("forgot-password/",ForgotPasswordPage.as_view(),name="forgot-password-page",),
     path("reset-password/",ResetPasswordPage.as_view(),name="reset-password-page",),
     path("verify-email/",VerifyEmailPage.as_view(),name="verify-email-page",),
 

@@ -46,8 +46,11 @@ class JivoAuthBackend(ModelBackend):
             return None
 
         except AuthServiceError as exc:
-            # 401 is a wrong email or password; anything else is worth logging.
-            if exc.status != 401:
+            # A plain 401 is a wrong email or password; anything else is
+            # worth logging. Django's login form shows one generic error.
+            if exc.data.get("code") == "email_not_verified":
+                logger.info("Jivo Auth login refused: email not verified.")
+            elif exc.status != 401:
                 logger.warning("Jivo Auth login failed: %s", exc)
 
             return None
@@ -64,6 +67,11 @@ class JivoAuthBackend(ModelBackend):
             return None
 
         if not has_app_access(claims):
+            logger.info(
+                "Jivo Auth login refused: user %s has no access to this "
+                "application.",
+                claims["sub"],
+            )
             end_remote_session(client, tokens)
             return None
 

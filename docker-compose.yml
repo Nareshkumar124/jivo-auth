@@ -1,57 +1,42 @@
+# The Django application only. PostgreSQL runs on the host machine; create
+# its database and user first (docs/deploy-auth-service.md).
+
 services:
 
   auth:
     build:
       context: .
-    container_name: auth_service
+      dockerfile: dockerfile
+    image: jivo-auth:latest
+    container_name: jivo_auth
+    # Share the host's network: the app reaches the host's PostgreSQL at
+    # 127.0.0.1:5432 (set POSTGRES_HOST=127.0.0.1), which then stays closed
+    # to the network, and gunicorn listens on 127.0.0.1:8000 for Nginx on
+    # the same machine.
+    network_mode: host
     env_file:
       - .env
     environment:
-      # .env points at localhost for local runserver; in compose the
-      # database is the postgres service.
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: "5432"
+      GUNICORN_BIND: ${GUNICORN_BIND:-127.0.0.1:8000}
       # The signing key is mounted as a secret, never baked into the image.
       JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+    # A mounted secret keeps its file permissions, so run as a user who can
+    # read the key: APP_UID/APP_GID in .env (the key owner's `id -u`/`id -g`),
+    # or the image's own user 10001 after `sudo chown 10001 jwt_private.pem`.
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
     secrets:
       - jwt_private_key
-    # Only Nginx on this host should reach gunicorn; Docker's published
-    # ports bypass the host firewall.
-    ports:
-      - "127.0.0.1:8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
-
-  postgres:
-    image: postgres:16
-    container_name: auth_postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    # Reachable from this machine (for `runserver`), not from the network.
-    ports:
-      - "127.0.0.1:5432:5432"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    # Docker's default json-file driver never rotates; cap the logs at 50 MB.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 
 secrets:
   jwt_private_key:
-    # Generate with: uv run python -m config.jwt_keys > jwt_private.pem
+    # Generate with:
+    #   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_private.pem
     file: ./jwt_private.pem
-
-volumes:
-  postgres_data:

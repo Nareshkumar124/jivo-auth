@@ -13,6 +13,9 @@ from applications.throttling import (
     LoginIPRateThrottle,
     LoginRateThrottle,
 )
+from audit.models import AuditEvent
+from audit.services import record
+from users.models import User
 
 from .models import UserSession
 from .schema import (
@@ -121,6 +124,11 @@ class LogoutView(generics.GenericAPIView):
             )
         )
 
+        record(
+            AuditEvent.Type.LOGOUT,
+            user=User.objects.filter(pk=token.get("sub")).first(),
+        )
+
         return Response(
             {
                 "message": "Logged out successfully."
@@ -169,6 +177,13 @@ class RevokeSessionView(
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        record(
+            AuditEvent.Type.SESSIONS_REVOKED,
+            user=request.user,
+            count=revoked_count,
+            session=str(pk),
+        )
+
         return Response(
             {
                 "message": "Session revoked successfully."
@@ -189,6 +204,13 @@ class RevokeAllSessionsView(
 
         revoked_count = revoke_all_sessions(
             request.user
+        )
+
+        record(
+            AuditEvent.Type.SESSIONS_REVOKED,
+            user=request.user,
+            count=revoked_count,
+            scope="all",
         )
 
         return Response(

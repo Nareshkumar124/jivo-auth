@@ -96,7 +96,10 @@ if not DEBUG and not PUBLIC_URL.startswith("https://"):
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    # Before django.contrib.admin, so its admin templates take precedence.
+    "adminpanel.apps.AdminPanelConfig",
+    # django.contrib.admin with the redesigned admin site as default.
+    "adminpanel.apps.JivoAdminConfig",
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -114,16 +117,22 @@ INSTALLED_APPS = [
     "users",
     "applications",
     "authentication",
+    "audit",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Serves collected static files (the admin's CSS and JS) from the app
+    # itself, so the container needs no separate static file server.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     # Before CommonMiddleware, so CORS headers are added to its responses.
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # Lets audit events find the client IP and acting admin.
+    "audit.context.AuditRequestMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -210,6 +219,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# `collectstatic` (run when the Docker image is built) copies files here.
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    # Compressed copies for WhiteNoise. Not the manifest variant, which
+    # needs `collectstatic` before any template renders (tests included).
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -363,6 +386,9 @@ REGISTRATION_EMAIL_DOMAINS = [
     domain.lower().lstrip("@")
     for domain in env_list("REGISTRATION_EMAIL_DOMAINS")
 ]
+
+# Audit events older than this are deleted by `manage.py prune_audit_events`.
+AUDIT_LOG_RETENTION_DAYS = env_int("AUDIT_LOG_RETENTION_DAYS", 365)
 
 # Refuse login until the user has verified their email address, so the
 # `email` claim can be trusted (and a domain limit can't be sidestepped by

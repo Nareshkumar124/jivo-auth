@@ -115,6 +115,21 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_short_name(self):
+        return self.first_name or self.email
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        user = super().from_db(db, field_names, values)
+
+        # To notice activation changes on save.
+        user._saved_is_active = user.__dict__.get("is_active")
+
+        return user
+
     def set_unusable_password(self):
         super().set_unusable_password()
 
@@ -129,16 +144,30 @@ class User(AbstractBaseUser, PermissionsMixin):
             or getattr(self, "_password_disabled", False)
         )
 
+        saved_is_active = getattr(self, "_saved_is_active", None)
+        status_changed = (
+            not self._state.adding
+            and saved_is_active is not None
+            and saved_is_active != self.is_active
+        )
+
         super().save(*args, **kwargs)
 
         self._password_disabled = False
+        self._saved_is_active = self.is_active
+
+        from .services import (
+            account_status_changed,
+            end_sessions_after_password_change,
+        )
 
         # Whoever changed it (API, admin, `manage.py changepassword`), the
         # old sessions and reset links must stop working.
         if password_changed:
-            from .services import end_sessions_after_password_change
-
             end_sessions_after_password_change(self)
+
+        if status_changed:
+            account_status_changed(self)
 
 
 class PasswordResetToken(models.Model):

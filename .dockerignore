@@ -11,3 +11,16 @@ htmlcov/
 
 # JWT signing keys
 *.pem
+
+# Not needed in the image
+docs/
+staticfiles/
+.claude/
+packages/jivo-auth-client/tests/
+
+# Written on the server by deploy.sh
+.deploy-history
+
+# Deployment notes and target, not needed in the image
+DEPLOYMENT.md
+deploy.env

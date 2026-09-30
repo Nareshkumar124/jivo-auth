@@ -1,16 +1,42 @@
 """
-Pages this service hosts for the links in its emails, so password reset and
-email verification work without any application building its own page.
-They use the same serializers and services as the API.
+Pages this service hosts, so password reset and email verification work
+without any application building its own: the forgot-password form that
+applications link to, and the pages the emailed links open. They use the
+same serializers, services and rate limits as the API.
 """
+
+from types import SimpleNamespace
 
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import never_cache
 
-from .serializers import ResetPasswordSerializer, VerifyEmailSerializer
-from .services import InvalidTokenError, reset_password, verify_email
+from applications.throttling import ScopedRateThrottle
+
+from .models import User
+from .serializers import (
+    ForgotPasswordSerializer,
+    ResendVerificationSerializer,
+    ResetPasswordSerializer,
+    VerifyEmailSerializer,
+)
+from .services import (
+    InvalidTokenError,
+    reset_password,
+    send_email_verification,
+    send_password_reset,
+    verify_email,
+)
+
+
+def throttled(request, scope):
+    """Whether the request exceeds the API's rate for `scope` (shared)."""
+
+    return not ScopedRateThrottle().allow_request(
+        request,
+        SimpleNamespace(throttle_scope=scope),
+    )
 
 
 def form_errors(serializer):
@@ -19,6 +45,59 @@ def form_errors(serializer):
         for messages in serializer.errors.values()
         for message in messages
     ]
+
+
+@method_decorator(never_cache, name="dispatch")
+class ForgotPasswordPage(View):
+    """Linked from applications' login pages ("Forgot your password?")."""
+
+    template_name = "users/forgot_password.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+
+        if throttled(request, "forgot_password"):
+            return render(
+                request,
+                self.template_name,
+                {
+                    "errors": ["Too many requests. Try again in a minute."],
+                },
+                status=429,
+            )
+
+        serializer = ForgotPasswordSerializer(
+            data=request.POST,
+        )
+
+        if not serializer.is_valid():
+            return render(
+                request,
+                self.template_name,
+                {
+                    "errors": form_errors(serializer),
+                },
+                status=400,
+            )
+
+        user = User.objects.filter(
+            email__iexact=serializer.validated_data["email"],
+            is_active=True,
+        ).first()
+
+        if user:
+            send_password_reset(user)
+
+        # Same page whether or not the account exists.
+        return render(
+            request,
+            self.template_name,
+            {
+                "done": True,
+            },
+        )
 
 
 @method_decorator(never_cache, name="dispatch")
@@ -97,6 +176,10 @@ class VerifyEmailPage(View):
 
     def post(self, request):
 
+        # The "send me a new link" form on the invalid-link page.
+        if "email" in request.POST:
+            return self.resend(request)
+
         serializer = VerifyEmailSerializer(
             data=request.POST,
         )
@@ -130,5 +213,49 @@ class VerifyEmailPage(View):
             self.template_name,
             {
                 "done": True,
+            },
+        )
+
+    def resend(self, request):
+
+        if throttled(request, "resend_verification"):
+            return render(
+                request,
+                self.template_name,
+                {
+                    "token_error": "Too many requests. Try again in a minute.",
+                },
+                status=429,
+            )
+
+        serializer = ResendVerificationSerializer(
+            data=request.POST,
+        )
+
+        if not serializer.is_valid():
+            return render(
+                request,
+                self.template_name,
+                {
+                    "token_error": "Enter a valid email address.",
+                },
+                status=400,
+            )
+
+        user = User.objects.filter(
+            email__iexact=serializer.validated_data["email"],
+            is_active=True,
+            is_verified=False,
+        ).first()
+
+        if user:
+            send_email_verification(user)
+
+        # Same page whether or not the account exists.
+        return render(
+            request,
+            self.template_name,
+            {
+                "resent": True,
             },
         )

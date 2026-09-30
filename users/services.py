@@ -13,6 +13,8 @@ from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
+from audit.models import AuditEvent
+from audit.services import record
 from authentication.services import revoke_all_sessions
 
 from .models import EmailVerificationToken, PasswordResetToken
@@ -111,7 +113,26 @@ def end_sessions_after_password_change(user):
         used_at=timezone.now()
     )
 
-    revoke_all_sessions(user)
+    revoked = revoke_all_sessions(user)
+
+    record(
+        AuditEvent.Type.PASSWORD_RESET
+        if getattr(user, "_password_reset", False)
+        else AuditEvent.Type.PASSWORD_CHANGED,
+        user=user,
+        sessions_revoked=revoked,
+    )
+
+
+def account_status_changed(user):
+    """User.save() calls this when is_active changes."""
+
+    record(
+        AuditEvent.Type.ACCOUNT_REACTIVATED
+        if user.is_active
+        else AuditEvent.Type.ACCOUNT_DEACTIVATED,
+        user=user,
+    )
 
 
 def set_new_password(user, password):
@@ -134,6 +155,11 @@ def send_password_reset(user):
         PasswordResetToken,
         user,
         PASSWORD_RESET_TOKEN_LIFETIME,
+    )
+
+    record(
+        AuditEvent.Type.PASSWORD_RESET_REQUESTED,
+        user=user,
     )
 
     _send(
@@ -162,6 +188,9 @@ def reset_password(raw_token, new_password):
             raw_token,
             "reset",
         )
+
+        # Recorded as a reset rather than a change.
+        reset_token.user._password_reset = True
 
         set_new_password(
             reset_token.user,
@@ -229,4 +258,9 @@ def verify_email(raw_token):
             used_at__isnull=True,
         ).update(
             used_at=timezone.now()
+        )
+
+        record(
+            AuditEvent.Type.EMAIL_VERIFIED,
+            user=user,
         )

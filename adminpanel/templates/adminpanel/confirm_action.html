@@ -1,0 +1,55 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls adminpanel %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }} jv-confirm-page{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumbs">
+  <li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+  <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+  <li aria-current="page">{{ title }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="jv-card jv-confirm{% if danger %} jv-confirm--danger{% endif %}">
+  <span class="jv-confirm__icon" aria-hidden="true">{% if danger %}{% icon "alert" 22 %}{% else %}{% icon "info" 22 %}{% endif %}</span>
+  <div class="jv-confirm__body">
+    <p class="jv-confirm__message">{{ message }}</p>
+
+    <h2 class="jv-confirm__count">
+      {{ count }} {% if count == 1 %}{{ opts.verbose_name }}{% else %}{{ opts.verbose_name_plural }}{% endif %}
+    </h2>
+    <ul class="jv-confirm__list">
+      {% for object in objects %}<li>{{ object }}</li>{% endfor %}
+      {% if count > objects|length %}<li class="jv-muted">{% blocktranslate with more=count|add:"-50" %}and {{ more }} more{% endblocktranslate %}</li>{% endif %}
+    </ul>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="{{ action }}">
+      <input type="hidden" name="select_across" value="{{ select_across }}">
+      {% for pk in selected %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ pk }}">{% endfor %}
+      <input type="hidden" name="jv_confirm" value="yes">
+
+      {% if form %}
+        <div class="jv-form-fields">
+          {% for field in form %}
+            <div class="jv-field{% if field.errors %} has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="jv-field__help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="jv-field__error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="jv-confirm__actions">
+        <button type="submit" class="jv-button {% if danger %}jv-button--danger{% else %}jv-button--primary{% endif %}">{{ confirm_label }}</button>
+        <a class="jv-button jv-button--ghost" href="{% url opts|admin_urlname:'changelist' %}">{% translate 'Cancel' %}</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

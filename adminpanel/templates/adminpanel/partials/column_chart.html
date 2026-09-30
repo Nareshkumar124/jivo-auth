@@ -1,0 +1,66 @@
+{% load i18n adminpanel %}
+{# Stacked columns, one per day. chart: adminpanel.charts.column_chart(). #}
+<figure class="jv-chart">
+  {% if chart.series|length > 1 %}
+    <ul class="jv-legend" aria-label="{% translate 'Legend' %}">
+      {% for series in chart.series %}
+        <li><span class="jv-swatch jv-swatch--{{ series.key }}" aria-hidden="true"></span>{{ series.label }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="jv-columns">
+    <div class="jv-columns__grid" aria-hidden="true">
+      {% for tick in chart.ticks %}
+        <div class="jv-columns__tick" style="bottom: {{ tick.position }}%"><span>{{ tick.value|compact }}</span></div>
+      {% endfor %}
+    </div>
+
+    <ol class="jv-columns__plot" aria-label="{{ chart_label }}">
+      {% for column in chart.columns %}
+        <li class="jv-col{% if column.is_today %} is-today{% endif %}{% if column.align %} jv-col--{{ column.align }}{% endif %}"
+            tabindex="0"
+            aria-label="{{ column.label }}: {% for value in column.values %}{{ value.value }} {{ value.label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+          <div class="jv-col__area">
+            <div class="jv-col__stack" style="height: {{ column.height|stringformat:'.2f' }}%">
+              {% for segment in column.segments %}
+                <span class="jv-col__seg jv-col__seg--{{ segment.key }}" style="flex-grow: {{ segment.value }}"></span>
+              {% endfor %}
+            </div>
+          </div>
+          <span class="jv-col__label" aria-hidden="true">{{ column.short }}</span>
+          <div class="jv-tip" aria-hidden="true">
+            <div class="jv-tip__title">{{ column.label }}</div>
+            {% for value in column.values %}
+              <div class="jv-tip__row">
+                <span class="jv-tip__key jv-tip__key--{{ value.key }}"></span>
+                <strong>{{ value.value }}</strong>
+                <span>{{ value.label }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+
+  <details class="jv-table-view">
+    <summary>{% translate 'View as table' %}</summary>
+    <table class="jv-table">
+      <thead>
+        <tr>
+          <th scope="col">{% translate 'Day' %}</th>
+          {% for series in chart.series %}<th scope="col" class="jv-num">{{ series.label }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for column in chart.columns %}
+          <tr>
+            <th scope="row">{{ column.label }}</th>
+            {% for value in column.values %}<td class="jv-num">{{ value.value }}</td>{% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+</figure>

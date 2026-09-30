@@ -115,6 +115,15 @@ class Application(models.Model):
             ]
         )
 
+        from audit.models import AuditEvent
+        from audit.services import record
+
+        record(
+            AuditEvent.Type.API_KEY_ROTATED,
+            application=self,
+            key_prefix=self.api_key_prefix,
+        )
+
         return raw_key
 
     @classmethod

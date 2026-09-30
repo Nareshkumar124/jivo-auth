@@ -16,3 +16,10 @@ htmlcov/
 
 # JWT signing keys
 *.pem
+
+# collectstatic output
+staticfiles/
+
+# This deployment's server details, kept out of Git
+DEPLOYMENT.md
+deploy.env

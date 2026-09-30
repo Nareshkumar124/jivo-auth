@@ -1,0 +1,32 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls adminpanel %}
+
+{% block content_title %}
+  <h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>
+  <p class="jv-page-subtitle">
+    {% blocktranslate count counter=cl.result_count %}{{ counter }} result{% plural %}{{ counter }} results{% endblocktranslate %}{% if cl.full_result_count is not None and cl.full_result_count != cl.result_count %} {% blocktranslate with total=cl.full_result_count %}of {{ total }}{% endblocktranslate %}{% endif %}
+  </p>
+{% endblock %}
+
+{# Every list gets a friendly empty state instead of an empty table. #}
+{% block result_list %}
+  {% if cl.result_count == 0 %}
+    {% with filtered=cl.get_filters_params %}
+      <div class="jv-empty jv-empty--list">
+        <span class="jv-empty__icon">{% icon "inbox" 26 %}</span>
+        {% if cl.query or filtered %}
+          <h2>{% blocktranslate with name=cl.opts.verbose_name_plural %}No {{ name }} match{% endblocktranslate %}</h2>
+          <p>{% translate 'Try another search or clear the filters.' %}</p>
+          <a class="jv-button" href="?">{% icon "x" 16 %}{% translate 'Clear search and filters' %}</a>
+        {% else %}
+          <h2>{% blocktranslate with name=cl.opts.verbose_name_plural %}No {{ name }} yet{% endblocktranslate %}</h2>
+          {% if has_add_permission %}
+            <a class="jv-button jv-button--primary" href="{% url cl.opts|admin_urlname:'add' %}{% if is_popup %}?{{ is_popup_var }}=1{% endif %}">{% icon "plus" 16 %}{% blocktranslate with name=cl.opts.verbose_name %}Add {{ name }}{% endblocktranslate %}</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    {% endwith %}
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock %}

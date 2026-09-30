@@ -1,0 +1,13 @@
+{% load adminpanel %}
+{# Horizontal bars, value at the tip. bars: adminpanel.charts.bar_list(). #}
+<ul class="jv-bars">
+  {% for bar in bars %}
+    <li class="jv-bars__row">
+      <a class="jv-bars__label" href="{{ bar.url }}">{{ bar.label }}</a>
+      <span class="jv-bars__area">
+        <span class="jv-bars__fill" style="width: calc({{ bar.width|stringformat:'.2f' }}% * 0.82)"></span>
+        <span class="jv-bars__value">{{ bar.value|compact }}</span>
+      </span>
+    </li>
+  {% endfor %}
+</ul>

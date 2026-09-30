@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jivo Auth is a central JWT authentication service (Django 6.1 + DRF + SimpleJWT, PostgreSQL), deployed at `https://auth.jivo.in`. It issues RS256 access/refresh tokens (HS256 remains available via `JWT_ALGORITHM`). Other Jivo apps (Django, FastAPI, Node) verify those tokens locally with the public key from `/.well-known/jwks.json` instead of calling this service on every request. Redis is deliberately not used in V1.
 
-`README.md` is the phased roadmap (Phases 1–10; the MVP is Phases 1–4). Work proceeds one phase at a time. When README and code disagree on routes, the code is correct. For example, register and the password endpoints live under `/api/v1/users/`, not `/api/v1/auth/`, and sessions are revoked with `POST .../revoke/` rather than `DELETE`.
+`docs/` holds the integration guides for consuming applications and the deployment guide; update them when settings, endpoints or client behaviour change. `README.md` is the phased roadmap (Phases 1–10; the MVP is Phases 1–4). Work proceeds one phase at a time. When README and code disagree on routes, the code is correct. For example, register and the password endpoints live under `/api/v1/users/`, not `/api/v1/auth/`, and sessions are revoked with `POST .../revoke/` rather than `DELETE`.
 
 ## Commands
 
@@ -26,13 +26,16 @@ uv run pytest packages/jivo-auth-client    # client package: its own settings, S
 
 uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null   # schema check
 
-docker compose up --build                 # auth on 127.0.0.1:8000 (runs migrate on start, 3 gunicorn workers) + postgres:16 on 127.0.0.1:5432
+./deploy.sh                               # redeploy this working tree to auth.jivo.in (--dry-run, --rollback; target in gitignored deploy.env; see docs/deploy-auth-service.md)
+docker compose up -d --build              # the Django app only, on host networking: uses the host's PostgreSQL at 127.0.0.1:5432, serves on 127.0.0.1:8000
 
 uv run python -m config.jwt_keys > jwt_private.pem   # new RSA signing key (gitignored)
 uv run python manage.py app_api_key oms --create "Jivo OMS"   # create/rotate an application's API key
 ```
 
-Settings come from `.env`, loaded by `python-dotenv` in `config/settings.py`; `.env.example` lists every variable with its production value. `DEBUG` defaults to off, and startup fails with `ImproperlyConfigured` when the JWT key is missing or, with `DEBUG` off, when `DJANGO_SECRET_KEY` or an `https://` `PUBLIC_URL` is missing. The default cache is a Postgres `DatabaseCache` (table created by `applications/migrations/0002_cache_table.py`), so throttle counters are shared by all workers. Logs go to stderr (`LOGGING`). Postgres is the only configured database, and there is no SQLite fallback. `.env` points `POSTGRES_HOST` at localhost for `runserver`. `docker-compose.yml` overrides it to `postgres` for the container and mounts `jwt_private.pem` as a compose secret. `.dockerignore` keeps `.env`, `.venv` and `*.pem` out of the image.
+Settings come from `.env`, loaded by `python-dotenv` in `config/settings.py`; `.env.example` lists every variable with its production value. `DEBUG` defaults to off, and startup fails with `ImproperlyConfigured` when the JWT key is missing or, with `DEBUG` off, when `DJANGO_SECRET_KEY` or an `https://` `PUBLIC_URL` is missing. The default cache is a Postgres `DatabaseCache` (table created by `applications/migrations/0002_cache_table.py`), so throttle counters are shared by all workers. Logs go to stderr (`LOGGING`). Postgres is the only configured database, and there is no SQLite fallback. PostgreSQL runs on the host, never in Docker: `runserver` and the container use the same `POSTGRES_HOST=127.0.0.1`.
+
+**Docker.** Only the Django app is containerized. `dockerfile` is multi-stage: uv installs the production dependencies, then the runtime image runs as uid 10001 and collects static files (served by WhiteNoise) with throwaway build-time secrets. `docker/entrypoint.sh` migrates (unless `RUN_MIGRATIONS=0`) and starts gunicorn on `GUNICORN_BIND` (with `--no-control-socket`: gunicorn 25.1+ would otherwise try to create it in the read-only `$HOME`, `/app`), and `docker/healthcheck.py` is the `HEALTHCHECK`. `docker-compose.yml` uses `network_mode: host` and mounts `jwt_private.pem` as a secret, which keeps its file permissions, so `user:` comes from `APP_UID`/`APP_GID`; it also caps the json-file logs at 5 × 10 MB. `.dockerignore` keeps `.env`, `.venv`, `*.pem` and `docs/` out of the image.
 
 Email goes through Django 6.1 `MAILERS`, built from the `EMAIL_BACKEND` (`smtp`/`console`) and `EMAIL_*` env vars. Don't define legacy `EMAIL_*` settings: Django 6.1 rejects them next to `MAILERS`.
 
@@ -40,7 +43,7 @@ There is no linter or formatter configured.
 
 ## Architecture
 
-**Django project `config/`** has a single settings module. Every API route is mounted under `/api/v1/` in `config/urls.py`, except `/.well-known/jwks.json` and the two HTML pages linked from emails (`/reset-password/`, `/verify-email/`, in `users/pages.py`). Swagger UI is at `/api/docs/` and the schema at `/api/schema/` (drf-spectacular). DRF defaults are `IsAuthenticated` plus SimpleJWT `JWTAuthentication`, so any public view must opt out explicitly with `AllowAny` (or with empty `authentication_classes`/`permission_classes`, as `health` does).
+**Django project `config/`** has a single settings module. Every API route is mounted under `/api/v1/` in `config/urls.py`, except `/.well-known/jwks.json` and the HTML pages in `users/pages.py`: `/forgot-password/` (linked from applications' login pages) and the pages emailed links open (`/reset-password/`, `/verify-email/`, which also offers a resend form). Their POSTs use the API's throttle scopes via `ScopedRateThrottle().allow_request()`. Swagger UI is at `/api/docs/` and the schema at `/api/schema/` (drf-spectacular). DRF defaults are `IsAuthenticated` plus SimpleJWT `JWTAuthentication`, so any public view must opt out explicitly with `AllowAny` (or with empty `authentication_classes`/`permission_classes`, as `health` does).
 
 **API docs.** Each app's `schema.py` holds its endpoints' `extend_schema` objects: tags, summary, description, responses and examples. The views only apply them as class decorators.
 - **Shared pieces** are in `config/openapi.py`: `MessageSerializer`, `ErrorSerializer`, the 401 and 429 responses, example tokens, and `rate_limit()`, which reads the throttle settings.
@@ -61,7 +64,7 @@ There is no linter or formatter configured.
 - **Reset and verification tokens.** These are stored only as a SHA-256 hash (`PasswordResetToken`, 15 minutes; `EmailVerificationToken`, 24 hours) and emailed as links built from `PASSWORD_RESET_URL`/`EMAIL_VERIFICATION_URL` (`{token}` placeholder; defaults are this service's own pages). The forgot-password response is identical whether or not the account exists, and it includes `reset_token` only when `RETURN_RESET_TOKEN_IN_RESPONSE` (`DEBUG` on and the console email backend).
 - **Password rules.** `users/validators.py` runs `AUTH_PASSWORD_VALIDATORS` plus the composition rules. Passwords hash with Argon2, and the PBKDF2 hashers are kept so older hashes still verify.
 
-**`applications/`** registers the Jivo apps that trust these tokens. An `Application` has a `slug`, an M2M `users` (access grants, edited in the user admin), and an API key stored only as a SHA-256 hash (`app_api_key` command). `ApplicationKeyAuthentication` reads `X-Jivo-App-Key` for the server-to-server endpoint `GET /api/v1/apps/users/`, which only returns users with access to the calling app.
+**`applications/`** registers the Jivo apps that trust these tokens. An `Application` has a `slug`, an M2M `users` (access grants, edited as checkboxes in the user admin), and an API key stored only as a SHA-256 hash (`app_api_key` command, or the admin's "Rotate API key" button, which shows the key once on its own `no-store` page). `ApplicationKeyAuthentication` reads `X-Jivo-App-Key` for the server-to-server endpoint `GET /api/v1/apps/users/`, which only returns users with access to the calling app.
 
 **`authentication/`** wraps SimpleJWT and adds device sessions. Most logic lives in serializers, not views:
 - JWT claims: `sub` (the user UUID), `token_type`, `email`, `apps` (active application slugs, from `add_user_claims()` in `authentication/tokens.py`) and `iss` (`JWT_ISSUER`, default `PUBLIC_URL`).
@@ -76,6 +79,20 @@ There is no linter or formatter configured.
 - `/auth/logout/` is public: the refresh token in the body is the proof, so logout works after the access token expires.
 - `/auth/verify/` is SimpleJWT's `TokenVerifyView`.
 
+**`audit/`** is the security log. Write events only through `audit.services.record(type, user=..., application=..., **details)`: it fills in the client IP, user agent and acting admin from the current request (`audit.context.AuditRequestMiddleware`, a contextvar). Account creation and application-access changes are recorded by signals in `audit/signals.py` (`m2m_changed` on `Application.users`, so change grants with `add`/`remove`/`set`, not through-model rows). `User.save()` records deactivation and reactivation; `end_sessions_after_password_change()` records password changes, or resets when `user._password_reset` is set. `AuditEvent.severity` and `.summary` drive the badges and one-line details; `prune_audit_events` deletes events older than `AUDIT_LOG_RETENTION_DAYS`.
+
+**`adminpanel/`** is the redesigned Django admin.
+- **Site.** `adminpanel.apps.JivoAdminConfig` replaces `django.contrib.admin` in `INSTALLED_APPS` and makes `JivoAdminSite` (`sites.py`) the default site, so `@admin.register` works as usual. The site adds the grouped sidebar (`NAV_SECTIONS`) and the dashboard (`dashboard.py`).
+- **Templates and theme.** `adminpanel` comes first in `INSTALLED_APPS`, so its `templates/admin/` override Django's. The theme is `static/adminpanel/css/admin.css`: `--jv-*` tokens for light and dark, mapped onto Django's CSS variables. Behaviour is in `static/adminpanel/js/admin.js`. The CSS loads in `base_site.html`'s `responsive` block, the last in `<head>`, so it beats Django's own sheets. Django 6.1 underlines content links with a selector weighing (1,1,2); component rules use `#container #main a.x` to beat it.
+- **Charts.** Plain HTML, with geometry from `charts.py`; the series colours were checked with the dataviz palette validator. The dashboard computes each section only if the viewer has that model's view permission.
+- **Building blocks** (`admin_tools.py`): `badge()`, `relative_time()`, `titled()` (readable filter titles), `recent_filter()`, `describe_user_agent()`, and `confirm_action()`. Every destructive bulk action must go through `confirm_action()`: it renders `adminpanel/confirm_action.html` and runs on the confirming POST (`jv_confirm=yes`). Extra change-form buttons come from `change_view(extra_context={"object_tools": [...]})`, shown by `admin/change_form_object_tools.html`, and must POST to views that re-check permissions.
+- **Access rules.**
+  - Only superusers can change superusers, staff flags, groups or permissions (`UserAdmin.get_readonly_fields` and `has_change_permission`), or staff roles.
+  - Staff roles are `StaffRole`, a proxy of `Group` with its own `adminpanel.*_staffrole` permissions.
+  - The default roles (`roles.py`) are created after migrations only if missing, so edits to them are never overwritten.
+  - SimpleJWT's token tables are hidden; revoke through Sessions.
+- **Django 6.1:** `format_html()` needs arguments; use `mark_safe()` for static snippets.
+
 **`packages/jivo-auth-client/`** is an installable package (0.2.0) with the import name `jivo_auth`. It depends on Django, DRF and PyJWT (not SimpleJWT).
 - **Config** is the `JIVO_AUTH` dict in the consuming app's settings, falling back to `JIVO_AUTH_<NAME>` env vars. `jivo_auth/settings.py` documents every key (`URL`, `APP`, `ALLOW_ALL_USERS`, `API_KEY`, `NUM_PROXIES`, `PUBLIC_KEY`, `SECRET`, `LEEWAY`, `LOCAL_USERS`, ...). System checks `jivo_auth.E001`-`E003`/`W001`/`W002` run when `jivo_auth` is in `INSTALLED_APPS`.
 - **Fails closed:** without `APP`, every token is refused unless `ALLOW_ALL_USERS` is set. The end-user IP forwarded to Jivo Auth comes from `REMOTE_ADDR` unless the client's own `NUM_PROXIES` says to read `X-Forwarded-For`.
@@ -87,4 +104,4 @@ There is no linter or formatter configured.
 
 - Access tokens are stateless. After logout, a session revoke, a password change, deactivation or losing application access, an already-issued access token stays valid until it expires (15 minutes by default), both here and in client apps.
 - Only one signing key is published at a time. Rotating `jwt_private.pem` invalidates every outstanding token, so all users must log in again.
-- There is no Nginx or static-file serving yet (README Phase 10). With `DEBUG=False`, the Django admin has no CSS. Swagger UI loads its assets from a CDN, so it still works.
+- Nginx isn't part of the repo (README Phase 10); `docs/deploy-auth-service.md` has the host config. Static files are served by WhiteNoise from the image.

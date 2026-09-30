@@ -1,10 +1,11 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import update_last_login
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
+from rest_framework import exceptions as drf_exceptions, serializers
 from rest_framework_simplejwt import state as jwt_state
 
 # SimpleJWT's AuthenticationFailed puts `code` in the response body.
@@ -27,6 +28,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 # which X-Forwarded-For entry (if any) is trusted, and a trusted application
 # may name the end user's IP.
 from applications.throttling import get_client_ip
+from audit.models import AuditEvent
+from audit.services import record
 
 from .models import UserSession
 from .services import revoke_sessions
@@ -74,14 +77,37 @@ class LoginSerializer(TokenObtainPairSerializer):
         )
         self.fields["password"].help_text = "Account password."
 
+    def login_failed(self, attrs, reason, user=None):
+        email = str(attrs.get(self.username_field, "")).strip().lower()
+
+        if user is None:
+            user = get_user_model().objects.filter(email__iexact=email).first()
+
+        record(
+            AuditEvent.Type.LOGIN_FAILED,
+            user=user,
+            email=email,
+            reason=reason,
+        )
+
     def validate(self, attrs):
 
         # Checks the credentials and is_active and sets self.user, without
         # issuing tokens yet (TokenObtainPairSerializer.validate would).
-        TokenObtainSerializer.validate(self, attrs)
+        # SimpleJWT raises DRF's AuthenticationFailed here (not its subclass).
+        try:
+            TokenObtainSerializer.validate(self, attrs)
+        except drf_exceptions.AuthenticationFailed:
+            self.login_failed(attrs, "invalid_credentials")
+            raise
 
         # Only after the password matched, so it reveals nothing to others.
-        check_can_get_tokens(self.user)
+        try:
+            check_can_get_tokens(self.user)
+        except drf_exceptions.AuthenticationFailed as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {}
+            self.login_failed(attrs, str(detail.get("code", "refused")), self.user)
+            raise
 
         refresh = issue_tokens(self.user)
 
@@ -90,7 +116,7 @@ class LoginSerializer(TokenObtainPairSerializer):
 
         request = self.context["request"]
 
-        UserSession.objects.create(
+        session = UserSession.objects.create(
             user=self.user,
             refresh_jti=refresh["jti"],
             device_name=attrs.get("device_name", ""),
@@ -99,6 +125,14 @@ class LoginSerializer(TokenObtainPairSerializer):
                 "HTTP_USER_AGENT",
                 "",
             ),
+        )
+
+        record(
+            AuditEvent.Type.LOGIN_SUCCEEDED,
+            user=self.user,
+            request=request,
+            session=str(session.pk),
+            device=session.device_name,
         )
 
         return {
@@ -187,6 +221,13 @@ class SessionTokenRefreshSerializer(TokenRefreshSerializer):
                     UserSession.objects.filter(pk=session.pk)
                 )
                 reused = True
+
+                record(
+                    AuditEvent.Type.TOKEN_REUSED,
+                    user=session.user,
+                    session=str(session.pk),
+                    device=session.device_name,
+                )
 
         # Raised outside the transaction, so the revocation is kept.
         raise InvalidToken(

@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls adminpanel %}
+
+{% block bodyclass %}{{ block.super }} app-{{ opts.app_label }} model-{{ opts.model_name }}{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumbs">
+  <li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+  <li><a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a></li>
+  <li><a href="{% url opts|admin_urlname:'change' application.pk %}">{{ application }}</a></li>
+  <li aria-current="page">{{ title }}</li>
+</ol>
+{% endblock %}
+
+{% block content %}
+<div class="jv-card jv-key">
+  <p class="jv-key__lead">
+    {% icon "key" 18 %}
+    {% blocktranslate with name=application.name %}New API key for <strong>{{ name }}</strong>. The previous key has stopped working.{% endblocktranslate %}
+  </p>
+
+  <div class="jv-key__box">
+    <code id="jv-api-key">{{ api_key }}</code>
+    <button type="button" class="jv-button" data-copy="#jv-api-key">{% icon "copy" 16 %}<span>{% translate 'Copy' %}</span></button>
+  </div>
+
+  <div class="jv-callout jv-callout--warning">
+    {% icon "alert" 16 %}
+    <p>{% translate 'This is the only time the key is shown; only its hash is stored. Put it in the application’s secret store as JIVO_AUTH["API_KEY"] now. Never send it to a browser.' %}</p>
+  </div>
+
+  <a class="jv-button jv-button--primary" href="{% url opts|admin_urlname:'change' application.pk %}">{% translate 'Done' %}</a>
+</div>
+{% endblock %}

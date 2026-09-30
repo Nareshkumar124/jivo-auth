@@ -1,0 +1,40 @@
+{% load i18n adminpanel %}
+{# Before the nav: Django's CSS sizes the content with #nav-sidebar + .content. #}
+<div class="jv-nav-backdrop" id="jv-nav-backdrop" hidden></div>
+<button class="sticky toggle-nav-sidebar" id="toggle-nav-sidebar" aria-label="{% translate 'Toggle navigation' %}"></button>
+<nav class="sticky jv-nav" id="nav-sidebar" aria-label="{% translate 'Sidebar' %}">
+  {# The id stays #nav-filter: Django's nav_sidebar.js expects it. admin.js does the filtering. #}
+  <label class="jv-nav__search">
+    {% icon "search" 16 %}
+    <input type="search" id="nav-filter" autocomplete="off"
+           placeholder="{% translate 'Jump to…' %}"
+           aria-label="{% translate 'Filter navigation items' %}">
+  </label>
+
+  <ul class="jv-nav__list">
+    <li>
+      <a class="jv-nav__item{% if request.path == dashboard_url %} is-current{% endif %}" href="{{ dashboard_url }}"{% if request.path == dashboard_url %} aria-current="page"{% endif %}>
+        {% icon "home" %}<span>{% translate 'Dashboard' %}</span>
+      </a>
+    </li>
+  </ul>
+
+  {% for section in nav_sections %}
+    <div class="jv-nav__section">
+      <h2 class="jv-nav__heading">{{ section.title }}</h2>
+      <ul class="jv-nav__list">
+        {% for item in section.items %}
+          <li>
+            <a class="jv-nav__item{% if item.current %} is-current{% endif %}" href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}>
+              {% icon item.icon %}<span>{{ item.label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% empty %}
+    <p class="jv-nav__note">{% translate 'You don’t have permission to view anything.' %}</p>
+  {% endfor %}
+
+  <p class="jv-nav__note jv-nav__no-match" hidden>{% translate 'No matches' %}</p>
+</nav>

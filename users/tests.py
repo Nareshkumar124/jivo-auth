@@ -878,6 +878,58 @@ class HostedPageTests(UserAPITestCase):
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_verified)
 
+    def test_forgot_password_page_sends_reset_link(self):
+        page = self.client.get(reverse("forgot-password-page"))
+        self.assertEqual(page.status_code, status.HTTP_200_OK)
+
+        response = self.client.post(
+            reverse("forgot-password-page"),
+            {"email": "ALICE@example.com"},
+        )
+
+        self.assertContains(response, "Check your email")
+        self.assertIn("reset-password/?token=", mail.outbox[0].body)
+
+    def test_forgot_password_page_does_not_reveal_account(self):
+        known = self.client.post(
+            reverse("forgot-password-page"),
+            {"email": EMAIL},
+        )
+        unknown = self.client.post(
+            reverse("forgot-password-page"),
+            {"email": "nobody@example.com"},
+        )
+
+        self.assertEqual(known.content, unknown.content)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_forgot_password_page_shares_the_api_rate_limit(self):
+        # settings: "forgot_password": "3/min"
+        for _ in range(3):
+            self.forgot_password("nobody@example.com")
+
+        response = self.client.post(
+            reverse("forgot-password-page"),
+            {"email": EMAIL},
+        )
+
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_verify_email_page_resends_link(self):
+        User.objects.filter(pk=self.user.pk).update(is_verified=False)
+
+        page = self.client.get(reverse("verify-email-page"))
+        self.assertContains(page, "Send new verification link")
+
+        response = self.client.post(
+            reverse("verify-email-page"),
+            {"email": EMAIL},
+        )
+
+        self.assertContains(response, "Check your email")
+        self.assertIn("verify-email/?token=", mail.outbox[0].body)
+
     def test_pages_require_csrf_token(self):
         client = self.client_class(enforce_csrf_checks=True)
 
@@ -928,8 +980,6 @@ class AdminTests(UserAPITestCase):
                 "usable_password": "true",
                 "password1": "An0ther!Pass",
                 "password2": "An0ther!Pass",
-                "Application_users-TOTAL_FORMS": "0",
-                "Application_users-INITIAL_FORMS": "0",
             },
         )
 
@@ -943,11 +993,26 @@ class AdminTests(UserAPITestCase):
     def test_log_out_everywhere_action(self):
         self.login()
 
+        confirm = self.client.post(
+            reverse("admin:users_user_changelist"),
+            {
+                "action": "log_out_everywhere",
+                "_selected_action": [str(self.user.id)],
+            },
+        )
+
+        # It asks first, and nothing happens until confirmed.
+        self.assertContains(confirm, "Log out everywhere")
+        self.assertTrue(
+            UserSession.objects.filter(user=self.user, revoked_at__isnull=True).exists()
+        )
+
         self.client.post(
             reverse("admin:users_user_changelist"),
             {
                 "action": "log_out_everywhere",
                 "_selected_action": [str(self.user.id)],
+                "jv_confirm": "yes",
             },
         )
 

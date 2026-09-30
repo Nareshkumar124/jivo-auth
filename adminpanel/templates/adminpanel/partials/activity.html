@@ -1,0 +1,31 @@
+{% load i18n adminpanel %}
+{# events: AuditEvent objects, newest first. #}
+<ol class="jv-activity">
+  {% for event in events %}
+    <li class="jv-activity__item">
+      <span class="jv-activity__dot jv-activity__dot--{{ event.severity }}" aria-hidden="true"></span>
+      <div class="jv-activity__body">
+        <p class="jv-activity__line">
+          <strong>{{ event.get_type_display }}</strong>
+          {% if event.email %}
+            {% if event.user_id and perms.users.view_user %}
+              <a href="{% url 'admin:users_user_change' event.user_id %}">{{ event.email }}</a>
+            {% else %}
+              <span>{{ event.email }}</span>
+            {% endif %}
+          {% endif %}
+          {% if event.application %}<span class="jv-muted">· {{ event.application.name }}</span>{% endif %}
+        </p>
+        <p class="jv-activity__meta jv-muted">
+          <time datetime="{{ event.created_at|date:'c' }}" title="{{ event.created_at|date:'Y-m-d H:i T' }}">{{ event.created_at|timesince }} {% translate 'ago' %}</time>
+          {% if event.actor %}· {% blocktranslate with actor=event.actor.email %}by {{ actor }}{% endblocktranslate %}{% endif %}
+          {% if event.ip_address %}· <code>{{ event.ip_address }}</code>{% endif %}
+          {% if event.summary %}· {{ event.summary }}{% endif %}
+        </p>
+      </div>
+      {% if event.severity != "info" %}
+        <span class="jv-badge jv-badge--{{ event.severity }}">{{ event.severity|capfirst }}</span>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ol>

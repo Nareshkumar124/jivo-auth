@@ -1,0 +1,62 @@
+{% extends "admin/base.html" %}
+{% load i18n static adminpanel %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{# Last block in <head>, so the theme loads after every Django stylesheet. #}
+{% block responsive %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'adminpanel/css/admin.css' %}" {% csp_nonce_attr %}>
+  <script src="{% static 'adminpanel/js/admin.js' %}" defer {% csp_nonce_attr %}></script>
+{% endblock %}
+
+{% block branding %}
+  {% include "adminpanel/icons.html" %}
+  {% if has_permission and is_nav_sidebar_enabled %}
+    <button type="button" class="jv-menu-button" id="jv-menu-button"
+            aria-controls="nav-sidebar" aria-expanded="false"
+            aria-label="{% translate 'Open navigation' %}">
+      {% icon "menu" 20 %}
+    </button>
+  {% endif %}
+  <a class="jv-brand" href="{% url 'admin:index' %}">
+    <span class="jv-brand__mark" aria-hidden="true">{% icon "key" 18 %}</span>
+    <span class="jv-brand__name">{{ site_header|default:_('Django administration') }}</span>
+  </a>
+  {% if environment %}
+    <span class="jv-env jv-env--{{ environment|lower }}" title="{% translate 'Environment' %}">{{ environment }}</span>
+  {% endif %}
+  {% if user.is_anonymous %}
+    {% include "admin/color_theme_toggle.html" %}
+  {% endif %}
+{% endblock %}
+
+{% block welcome-msg %}
+  <span class="jv-user">
+    <span class="jv-avatar" aria-hidden="true">{{ user|initials }}</span>
+    <span class="jv-user__text">
+      <strong>{% firstof user.get_short_name user.get_username %}</strong>
+      <span class="jv-user__role">{% if user.is_superuser %}{% translate 'Superuser' %}{% else %}{% translate 'Staff' %}{% endif %}</span>
+    </span>
+  </span>
+{% endblock %}
+
+{% block userlinks %}
+  {% if site_url %}
+    <a class="jv-header-link" href="{{ site_url }}">{% icon "book" 16 %}<span>{% translate 'API docs' %}</span></a>
+  {% endif %}
+  {% if user.has_usable_password %}
+    <a class="jv-header-link" href="{% url 'admin:password_change' %}">{% icon "lock" 16 %}<span>{% translate 'Password' %}</span></a>
+  {% endif %}
+  <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+    {% csrf_token %}
+    <button type="submit" class="jv-header-link">{% icon "log-out" 16 %}<span>{% translate 'Log out' %}</span></button>
+  </form>
+  {% include "admin/color_theme_toggle.html" %}
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block footer %}
+  <div class="jv-footer">Jivo Auth · {{ environment }}</div>
+{% endblock %}

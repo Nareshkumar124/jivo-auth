@@ -1,0 +1,165 @@
+{% extends "admin/base_site.html" %}
+{% load i18n adminpanel %}
+
+{% block bodyclass %}{{ block.super }} dashboard jv-dashboard{% endblock %}
+
+{% block coltype %}colM{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block content_title %}
+  <div class="jv-page-head">
+    <div>
+      <h1>{{ title }}</h1>
+      <p class="jv-page-head__sub">
+        {% blocktranslate with name=user.get_short_name|default:user.get_username %}Welcome back, {{ name }}. Here’s what’s happening across Jivo Auth.{% endblocktranslate %}
+      </p>
+    </div>
+    <div class="jv-page-head__actions">
+      {% if perms.users.add_user %}
+        <a class="jv-button jv-button--primary" href="{% url 'admin:users_user_add' %}">{% icon "user-plus" 16 %}{% translate 'Add user' %}</a>
+      {% endif %}
+      {% if perms.applications.add_application %}
+        <a class="jv-button" href="{% url 'admin:applications_application_add' %}">{% icon "plus" 16 %}{% translate 'Register application' %}</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+{% with d=dashboard %}
+  {% if d.tiles %}
+    <section class="jv-tiles" aria-label="{% translate 'Key figures' %}">
+      {% for tile in d.tiles %}
+        <a class="jv-tile" href="{{ tile.url }}">
+          <span class="jv-tile__label">{% icon tile.icon 16 %}{{ tile.label }}</span>
+          <span class="jv-tile__value">{{ tile.value|compact }}</span>
+          {% if tile.delta %}
+            <span class="jv-tile__delta jv-delta jv-delta--{{ tile.delta.tone }}">
+              {% if tile.delta.direction == "up" %}{% icon "arrow-up" 14 %}{% elif tile.delta.direction == "down" %}{% icon "arrow-down" 14 %}{% else %}{% icon "minus" 14 %}{% endif %}
+              <span>{{ tile.delta.text }}</span>
+              <span class="jv-delta__period">{{ tile.delta_label }}</span>
+            </span>
+          {% elif tile.note %}
+            <span class="jv-tile__note">{{ tile.note }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  {% if d.attention %}
+    <section class="jv-card jv-attention" aria-labelledby="attention-title">
+      <h2 class="jv-card__title" id="attention-title">{% icon "alert" 16 %}{% translate 'Needs attention' %}</h2>
+      <ul class="jv-attention__list">
+        {% for item in d.attention %}
+          <li class="jv-attention__item">
+            <span class="jv-badge jv-badge--{{ item.tone }}">{{ item.count|compact }}</span>
+            <div>
+              <a href="{{ item.url }}">{{ item.text|capfirst }}</a>
+              <p class="jv-muted">{{ item.hint }}</p>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <div class="jv-grid">
+    {% if d.signins %}
+      <section class="jv-card jv-span-2" aria-labelledby="signins-title">
+        <header class="jv-card__head">
+          <div>
+            <h2 class="jv-card__title" id="signins-title">{% translate 'Sign-ins' %}</h2>
+            <p class="jv-card__sub">{% translate 'Last 14 days' %} · {{ d.signins.total|compact }} {% translate 'attempts' %}</p>
+          </div>
+          {% if perms.audit.view_auditevent %}<a class="jv-card__link" href="{% url 'admin:audit_auditevent_changelist' %}?type__exact=login_failed">{% translate 'Failed sign-ins' %}</a>{% endif %}
+        </header>
+        {% include "adminpanel/partials/column_chart.html" with chart=d.signins chart_id="signins" chart_label=_("Sign-ins per day, successful and failed") %}
+      </section>
+    {% endif %}
+
+    {% if d.signups %}
+      <section class="jv-card" aria-labelledby="signups-title">
+        <header class="jv-card__head">
+          <div>
+            <h2 class="jv-card__title" id="signups-title">{% translate 'New users' %}</h2>
+            <p class="jv-card__sub">{% translate 'Last 14 days' %} · {{ d.signups.total|compact }} {% translate 'accounts' %}</p>
+          </div>
+        </header>
+        {% include "adminpanel/partials/column_chart.html" with chart=d.signups chart_id="signups" chart_label=_("New users per day") %}
+      </section>
+    {% endif %}
+
+    {% if d.applications is not None %}
+      <section class="jv-card" aria-labelledby="apps-title">
+        <header class="jv-card__head">
+          <div>
+            <h2 class="jv-card__title" id="apps-title">{% translate 'Users per application' %}</h2>
+            <p class="jv-card__sub">{% translate 'Active users with access' %}</p>
+          </div>
+          <a class="jv-card__link" href="{% url 'admin:applications_application_changelist' %}">{% translate 'All applications' %}</a>
+        </header>
+        {% if d.applications %}
+          {% include "adminpanel/partials/bar_list.html" with bars=d.applications %}
+        {% else %}
+          {% include "adminpanel/partials/empty.html" with icon_name="grid" message=_("No applications yet.") %}
+        {% endif %}
+      </section>
+    {% endif %}
+
+  </div>
+
+  <div class="jv-grid jv-grid--activity">
+    {% if d.activity is not None %}
+      <section class="jv-card" aria-labelledby="activity-title">
+        <header class="jv-card__head">
+          <div>
+            <h2 class="jv-card__title" id="activity-title">{% translate 'Recent activity' %}</h2>
+            <p class="jv-card__sub">{% translate 'Latest events from the audit log' %}</p>
+          </div>
+          <a class="jv-card__link" href="{% url 'admin:audit_auditevent_changelist' %}">{% translate 'Open audit log' %}</a>
+        </header>
+        {% if d.activity %}
+          {% include "adminpanel/partials/activity.html" with events=d.activity %}
+        {% else %}
+          {% include "adminpanel/partials/empty.html" with icon_name="activity" message=_("No activity yet. Sign-ins and account changes will appear here.") %}
+        {% endif %}
+      </section>
+    {% endif %}
+    {% if d.failed_ips is not None %}
+      <section class="jv-card" aria-labelledby="ips-title">
+        <header class="jv-card__head">
+          <div>
+            <h2 class="jv-card__title" id="ips-title">{% translate 'Failed sign-ins by IP' %}</h2>
+            <p class="jv-card__sub">{% translate 'Last 24 hours, 3 or more failures' %}</p>
+          </div>
+        </header>
+        {% if d.failed_ips %}
+          <div class="jv-table-wrap"><table class="jv-table">
+            <thead><tr><th scope="col">{% translate 'IP address' %}</th><th scope="col" class="jv-num">{% translate 'Failures' %}</th><th scope="col" class="jv-num">{% translate 'Accounts' %}</th></tr></thead>
+            <tbody>
+              {% for row in d.failed_ips %}
+                <tr>
+                  <td><a href="{{ row.url }}"><code>{{ row.ip_address }}</code></a></td>
+                  <td class="jv-num">{{ row.count }}</td>
+                  <td class="jv-num">{{ row.accounts }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table></div>
+        {% else %}
+          {% include "adminpanel/partials/empty.html" with icon_name="shield" message=_("Nothing suspicious. No IP failed three times.") tone="good" %}
+        {% endif %}
+      </section>
+    {% endif %}
+
+  </div>
+
+  {% if not d.tiles and d.activity is None %}
+    {% include "adminpanel/partials/empty.html" with icon_name="lock" message=_("Your account can’t see any dashboard figures yet. Ask a superuser for a staff role.") %}
+  {% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block sidebar %}{% endblock %}

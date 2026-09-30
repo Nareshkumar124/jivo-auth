@@ -6,12 +6,24 @@
   {% if done %}
     <h1>Email verified</h1>
     <div class="notice ok">Thanks, your email address is verified.</div>
+  {% elif resent %}
+    <h1>Check your email</h1>
+    <div class="notice ok">
+      If an unverified account exists for that address, a new verification
+      link is on its way. It expires in 24 hours.
+    </div>
   {% elif token_error or not token %}
     <h1>Link not valid</h1>
     <div class="notice error">
       {{ token_error|default:"This verification link is incomplete." }}
-      Sign in and request a new verification email.
     </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <label for="email">Send a new link to</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+      <button type="submit">Send new verification link</button>
+    </form>
   {% else %}
     <h1>Verify your email</h1>
     <p>Confirm that this email address belongs to you.</p>

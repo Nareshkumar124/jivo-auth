@@ -1,0 +1,6 @@
+{% load adminpanel %}
+{# Empty state. icon_name, message, optional tone ("good"). #}
+<div class="jv-empty{% if tone %} jv-empty--{{ tone }}{% endif %}">
+  <span class="jv-empty__icon">{% icon icon_name|default:"inbox" 22 %}</span>
+  <p>{{ message }}</p>
+</div>
