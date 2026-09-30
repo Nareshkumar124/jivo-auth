@@ -1,0 +1,40 @@
+[project]
+name = "jivo-auth"
+version = "0.1.0"
+description = "Central JWT authentication service for Jivo applications"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "django>=6.1.1",
+    "django-cors-headers>=4.7",
+    "djangorestframework>=3.18.1",
+    "djangorestframework-simplejwt>=5.5.1",
+    "drf-spectacular>=0.30.0",
+    "gunicorn>=26.2.0",
+    "psycopg[binary]>=3.3.6",
+    "pyjwt[crypto]>=2.10",
+    "python-dotenv>=1.2.3",
+]
+
+[dependency-groups]
+dev = [
+    "jivo-auth-client",
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+]
+
+[tool.uv.workspace]
+members = [
+    "packages/jivo-auth-client",
+]
+
+[tool.uv.sources]
+jivo-auth-client = { workspace = true, editable = true }
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py"]
+# The client package has its own test settings; run its tests with
+# `uv run pytest packages/jivo-auth-client`.
+norecursedirs = [".*", "*.egg", "build", "dist", "node_modules", "venv", "packages"]

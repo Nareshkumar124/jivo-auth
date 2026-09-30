@@ -1,0 +1,13 @@
+.venv/
+.git/
+.env
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+
+# JWT signing keys
+*.pem

@@ -1,0 +1,25 @@
+{% extends "users/base.html" %}
+
+{% block title %}Verify email · Jivo{% endblock %}
+
+{% block content %}
+  {% if done %}
+    <h1>Email verified</h1>
+    <div class="notice ok">Thanks, your email address is verified.</div>
+  {% elif token_error or not token %}
+    <h1>Link not valid</h1>
+    <div class="notice error">
+      {{ token_error|default:"This verification link is incomplete." }}
+      Sign in and request a new verification email.
+    </div>
+  {% else %}
+    <h1>Verify your email</h1>
+    <p>Confirm that this email address belongs to you.</p>
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="token" value="{{ token }}">
+      <button type="submit">Verify email address</button>
+    </form>
+  {% endif %}
+{% endblock %}

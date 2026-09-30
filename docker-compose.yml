@@ -1,0 +1,57 @@
+services:
+
+  auth:
+    build:
+      context: .
+    container_name: auth_service
+    env_file:
+      - .env
+    environment:
+      # .env points at localhost for local runserver; in compose the
+      # database is the postgres service.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      # The signing key is mounted as a secret, never baked into the image.
+      JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+    secrets:
+      - jwt_private_key
+    # Only Nginx on this host should reach gunicorn; Docker's published
+    # ports bypass the host firewall.
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: auth_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Reachable from this machine (for `runserver`), not from the network.
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+
+secrets:
+  jwt_private_key:
+    # Generate with: uv run python -m config.jwt_keys > jwt_private.pem
+    file: ./jwt_private.pem
+
+volumes:
+  postgres_data:

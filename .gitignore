@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+.env
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+.idea/
+.vscode/
+
+.DS_Store
+
+# JWT signing keys
+*.pem
