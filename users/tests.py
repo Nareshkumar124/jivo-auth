@@ -1099,3 +1099,65 @@ class PasswordChangeHookTests(UserAPITestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertFalse(self.active_sessions().exists())
+
+
+class EmployeeCodeTests(UserAPITestCase):
+
+    def test_code_is_trimmed_and_uppercased(self):
+        user = User.objects.create_user(email="bob@jivo.in", employee_code="  jivo12 ")
+
+        user.refresh_from_db()
+        self.assertEqual(user.employee_code, "JIVO12")
+
+    def test_code_is_optional_for_everyone(self):
+        User.objects.create_user(email="bob@jivo.in")
+        User.objects.create_user(email="carol@jivo.in")
+
+        self.assertEqual(User.objects.filter(employee_code="").count(), 3)
+
+    def test_duplicate_code_is_rejected_by_the_database(self):
+        from django.db import IntegrityError, transaction
+
+        User.objects.create_user(email="bob@jivo.in", employee_code="JIVO12")
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            User.objects.create_user(email="carol@jivo.in", employee_code="jivo12")
+
+    def test_validation_reports_a_duplicate_in_any_case(self):
+        from django.core.exceptions import ValidationError
+
+        User.objects.create_user(email="bob@jivo.in", employee_code="JIVO12")
+        user = User(email="carol@jivo.in", employee_code=" jivo12")
+        user.set_unusable_password()
+
+        with self.assertRaises(ValidationError) as caught:
+            user.full_clean()
+
+        self.assertEqual(
+            caught.exception.message_dict["employee_code"],
+            ["Another user already has this employee code."],
+        )
+
+    def test_invalid_characters_are_rejected(self):
+        from django.core.exceptions import ValidationError
+
+        user = User(email="bob@jivo.in", employee_code="JIVO 12")
+        user.set_unusable_password()
+
+        with self.assertRaises(ValidationError) as caught:
+            user.full_clean()
+
+        self.assertIn("employee_code", caught.exception.message_dict)
+
+    def test_me_shows_code_but_cannot_change_it(self):
+        User.objects.filter(pk=self.user.pk).update(employee_code="JIVO7")
+        self.authenticate()
+
+        self.assertEqual(self.client.get(reverse("current-user")).json()["employee_code"], "JIVO7")
+
+        response = self.client.patch(reverse("current-user"), {"employee_code": "HACKED1", "first_name": "Al"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()["employee_code"], "JIVO7")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.employee_code, "JIVO7")

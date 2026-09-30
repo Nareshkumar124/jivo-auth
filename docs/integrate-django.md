@@ -385,7 +385,8 @@ client = AuthClient()
 
 everyone = client.get_users()        # all users with access
 some = client.get_users(jivo_ids)    # only these Jivo user IDs; batched for you
-# [{"id": "...", "email": "...", "first_name": "...", "last_name": "...", "is_active": True}]
+# [{"id": "...", "email": "...", "first_name": "...", "last_name": "...",
+#   "employee_code": "JIVO1234", "is_active": True}]
 ```
 
 Users without access to your application are never returned.

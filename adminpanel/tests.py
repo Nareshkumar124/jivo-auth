@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth.models import Group
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -167,7 +167,8 @@ class DashboardTests(AdminTestCase):
         sections = self.client.get(reverse("admin:index")).context["nav_sections"]
         labels = [item["label"] for section in sections for item in section["items"]]
 
-        self.assertEqual(labels, ["Users", "Applications", "Sessions", "Audit log"])
+        # Docs is for every staff member.
+        self.assertEqual(labels, ["Users", "Applications", "Sessions", "Audit log", "Docs"])
 
 
 class UserAdminPermissionTests(AdminTestCase):
@@ -426,3 +427,172 @@ class PageTests(AdminTestCase):
         response = self.client.get(reverse("admin:index"))
 
         self.assertNotContains(response, "token_blacklist")
+
+
+class EmployeeCodeAdminTests(AdminTestCase):
+
+    def setUp(self):
+        super().setUp()
+
+        self.client.force_login(self.superuser)
+
+    def test_add_user_with_code(self):
+        response = self.client.post(
+            reverse("admin:users_user_add"),
+            {
+                "email": "bob@jivo.in",
+                "employee_code": " jivo42 ",
+                "is_verified": "on",
+                "usable_password": "true",
+                "password1": "An0ther!Pass",
+                "password2": "An0ther!Pass",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(User.objects.get(email="bob@jivo.in").employee_code, "JIVO42")
+
+    def test_edit_code(self):
+        response = self.client.post(
+            reverse("admin:users_user_change", args=[self.alice.pk]),
+            {
+                "email": "alice@jivo.in",
+                "first_name": "",
+                "last_name": "",
+                "employee_code": "jivo7",
+                "is_active": "on",
+                "is_verified": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.alice.refresh_from_db()
+        self.assertEqual(self.alice.employee_code, "JIVO7")
+
+    def test_duplicate_code_shows_a_form_error(self):
+        User.objects.filter(pk=self.superuser.pk).update(employee_code="JIVO7")
+
+        response = self.client.post(
+            reverse("admin:users_user_change", args=[self.alice.pk]),
+            {
+                "email": "alice@jivo.in",
+                "first_name": "",
+                "last_name": "",
+                "employee_code": "jivo7",
+                "is_active": "on",
+                "is_verified": "on",
+            },
+        )
+
+        self.assertEqual(
+            response.context["adminform"].form.errors["employee_code"],
+            ["Another user already has this employee code."],
+        )
+        self.alice.refresh_from_db()
+        self.assertEqual(self.alice.employee_code, "")
+
+    def test_list_shows_and_searches_codes(self):
+        User.objects.filter(pk=self.alice.pk).update(employee_code="JIVO7")
+
+        response = self.client.get(self.changelist("users_user") + "?q=jivo7")
+
+        self.assertEqual([user.email for user in response.context["cl"].result_list], ["alice@jivo.in"])
+        self.assertContains(response, "<code>JIVO7</code>", html=True)
+
+
+class DocsPageTests(AdminTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.url = reverse("admin:docs")
+
+    def test_anonymous_is_sent_to_login(self):
+        response = self.client.get(self.url)
+
+        self.assertRedirects(response, f"{reverse('admin:login')}?next={self.url}")
+
+    def test_nav_links_to_docs(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(reverse("admin:index"))
+
+        self.assertContains(response, f'href="{self.url}"')
+
+    @override_settings(PUBLIC_URL="https://auth.example.test")
+    def test_examples_use_this_server_and_the_first_application(self):
+        Application.objects.create(slug="ecom", name="Jivo Ecom")
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Integrate a Django REST Framework API")
+        self.assertContains(response, '&quot;URL&quot;: &quot;https://auth.example.test&quot;')
+        self.assertContains(response, '&quot;APP&quot;: &quot;ecom&quot;')
+        self.assertContains(response, "https://auth.example.test/.well-known/jwks.json")
+        self.assertContains(response, '<option value="oms">Jivo OMS (oms)</option>', html=True)
+        # Code is escaped, not rendered.
+        self.assertContains(response, "--rev &lt;commit&gt;")
+        self.assertNotContains(response, "__APP__")
+        self.assertNotContains(response, "__BASE__")
+
+    def test_application_picker(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.url, {"app": "oms"})
+        self.assertEqual(response.context["slug"], "oms")
+        self.assertContains(response, '&quot;APP&quot;: &quot;oms&quot;')
+
+        # Unknown and inactive slugs fall back to the first active one.
+        Application.objects.create(slug="old", name="Old", is_active=False)
+        self.assertEqual(self.client.get(self.url, {"app": "old"}).context["slug"], "oms")
+        self.assertEqual(self.client.get(self.url, {"app": "<b>"}).context["slug"], "oms")
+
+    def test_staff_without_application_access_see_a_placeholder(self):
+        self.client.force_login(staff("plain@jivo.in"))
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["slug"], "your-app")
+        self.assertNotContains(response, "Jivo OMS")
+        self.assertNotContains(response, 'name="app"')
+
+    def test_service_status(self):
+        self.client.force_login(self.superuser)
+
+        with override_settings(CORS_ALLOWED_ORIGINS=[], CORS_ALLOWED_ORIGIN_REGEXES=[], REGISTRATION_ENABLED=False):
+            response = self.client.get(self.url)
+        self.assertContains(response, "No browser origin is allowed (CORS).")
+        self.assertContains(response, "Self-registration is off.")
+
+        with override_settings(CORS_ALLOWED_ORIGINS=["https://oms.jivo.in"], REGISTRATION_ENABLED=True):
+            response = self.client.get(self.url)
+        self.assertContains(response, "<code>https://oms.jivo.in</code>", html=True)
+        self.assertContains(response, "Self-registration is on.")
+
+    def test_api_reference_comes_from_the_schema(self):
+        self.client.force_login(self.superuser)
+
+        groups = self.client.get(self.url).context["api_groups"]
+        endpoints = {
+            (endpoint["method"], endpoint["path"]): endpoint
+            for group in groups
+            for endpoint in group["endpoints"]
+        }
+
+        login = endpoints[("POST", "/api/v1/auth/login/")]
+        self.assertEqual(login["auth"], "None")
+        self.assertEqual(login["status"], "200")
+        self.assertIn({"name": "email", "required": True}, login["request"])
+        self.assertIn({"name": "device_name", "required": False}, login["request"])
+        self.assertIn({"name": "refresh", "required": True}, login["response"])
+
+        me = endpoints[("GET", "/api/v1/users/me/")]
+        self.assertEqual(me["auth"], "Bearer")
+        self.assertIn("employee_code", [field["name"] for field in me["response"]])
+
+        self.assertEqual(endpoints[("GET", "/api/v1/apps/users/")]["auth"], "App key")
+        self.assertIn(
+            {"name": "id", "required": False, "query": True},
+            endpoints[("GET", "/api/v1/apps/users/")]["request"],
+        )

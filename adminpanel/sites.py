@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import reverse
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 
 from .dashboard import build_dashboard
+from .docs import build_docs
 
 
 # Sidebar sections, in order: (title, [(app_label, model name, label, icon)]).
@@ -78,6 +80,22 @@ def build_nav(request, available_apps):
     if others:
         sections.append({"title": "Other", "items": others})
 
+    # For every staff member, whatever their permissions.
+    docs_url = reverse("admin:docs")
+    sections.append(
+        {
+            "title": "Resources",
+            "items": [
+                {
+                    "label": "Docs",
+                    "icon": "book",
+                    "url": docs_url,
+                    "current": request.path.startswith(docs_url),
+                },
+            ],
+        }
+    )
+
     return sections
 
 
@@ -89,6 +107,23 @@ class JivoAdminSite(admin.AdminSite):
 
     # "View site" leads to the API reference: the service has no site.
     site_url = "/api/docs/"
+
+    def get_urls(self):
+        return [
+            path("docs/", self.admin_view(self.docs), name="docs"),
+            *super().get_urls(),
+        ]
+
+    def docs(self, request):
+        return TemplateResponse(
+            request,
+            "adminpanel/docs/drf.html",
+            {
+                **self.each_context(request),
+                "title": "Integrate a Django REST Framework API",
+                **build_docs(request),
+            },
+        )
 
     def each_context(self, request):
         context = super().each_context(request)

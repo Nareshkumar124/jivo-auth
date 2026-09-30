@@ -1,0 +1,9 @@
+{% load adminpanel %}
+{# A copyable code block. code, label (e.g. "settings.py"), id. #}
+<figure class="jv-code">
+  <figcaption class="jv-code__bar">
+    <span>{{ label }}</span>
+    <button type="button" class="jv-code__copy" data-copy="#{{ id }}" aria-label="Copy {{ label }}">{% icon "copy" 14 %}<span>Copy</span></button>
+  </figcaption>
+  <pre id="{{ id }}"><code>{{ code }}</code></pre>
+</figure>

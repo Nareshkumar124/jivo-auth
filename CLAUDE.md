@@ -57,6 +57,7 @@ There is no linter or formatter configured.
 
 **`users/`** holds the custom `AUTH_USER_MODEL = "users.User"`. It has a UUID primary key, `email` as `USERNAME_FIELD`, and no username field.
 - **Email handling.** Emails are case-insensitive everywhere. `UserManager.create_user` lowercases them, `get_by_natural_key` (used by login) matches with `iexact`, and a `Lower("email")` unique constraint backs this up. Use `email__iexact` for lookups.
+- **Employee code.** `User.employee_code` is optional and unique when set (conditional `UniqueConstraint`, error code `employee_code_taken`, which `validate_constraints()` moves onto the field). It's normalized to uppercase in both `clean_fields()` (before validation) and `save()`. Administrators set it; the APIs expose it read-only (`/users/me/`, `/apps/users/`), and it isn't a token claim.
 - **Endpoints.** The app owns registration, email verification, `GET`/`PATCH /users/me/` (only names are editable), and the password flows. `REGISTRATION_ENABLED` and `REGISTRATION_EMAIL_DOMAINS` gate registration; registering never grants application access.
 - **Verified email.** With `REQUIRE_VERIFIED_EMAIL` (default on) login and refresh refuse unverified users with 401 `code: email_not_verified`, so the `email` claim can be trusted. `resend-verification` is public (by email). `create_superuser` and the admin add form mark users verified.
 - **Password changes.** `User.save()` calls `end_sessions_after_password_change()` whenever `set_password()`/`set_unusable_password()` changed the password (API, admin, `changepassword`), revoking every session and pending reset token. Hash upgrades on login don't count (Django clears `_password` for them).
@@ -91,6 +92,7 @@ There is no linter or formatter configured.
   - Staff roles are `StaffRole`, a proxy of `Group` with its own `adminpanel.*_staffrole` permissions.
   - The default roles (`roles.py`) are created after migrations only if missing, so edits to them are never overwritten.
   - SimpleJWT's token tables are hidden; revoke through Sessions.
+- **Docs tab** (`/admin/docs/`, `JivoAdminSite.docs`, open to all staff): the DRF integration guide, `templates/adminpanel/docs/drf.html`. `docs.py` fills it from the running configuration (URLs, token lifetimes, rate limits, CORS, registration, email) and builds its API reference from the drf-spectacular schema, so new endpoints appear there without edits. Code samples are constants in `docs.py` with `__BASE__`/`__APP__`/`__ISSUER__` placeholders; keep them in step with `docs/integrate-drf.md` and the client package.
 - **Django 6.1:** `format_html()` needs arguments; use `mark_safe()` for static snippets.
 
 **`packages/jivo-auth-client/`** is an installable package (0.2.0) with the import name `jivo_auth`. It depends on Django, DRF and PyJWT (not SimpleJWT).

@@ -96,6 +96,7 @@ Rate limited to {rate_limit("application")} per application.
                         "email": "alice@jivo.in",
                         "first_name": "Alice",
                         "last_name": "Smith",
+                        "employee_code": "JIVO1234",
                         "is_active": True,
                     },
                 ),

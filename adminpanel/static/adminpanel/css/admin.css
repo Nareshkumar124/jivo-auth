@@ -241,6 +241,7 @@ a:visited {
 #container #main a.jv-nav__item,
 #container #main a.jv-card__link,
 #container #main a.jv-bars__label,
+#container #main .jv-docs__toc a,
 #container #main #changelist-filter a,
 #container #main .paginator a,
 #container #main .object-tools a,
@@ -1007,6 +1008,11 @@ ul.messagelist li.error {
 .jv-callout--info {
     background: var(--jv-info-soft);
     color: var(--jv-info);
+}
+
+.jv-callout--good {
+    background: var(--jv-good-soft);
+    color: var(--jv-good);
 }
 
 /* ------------------------------------------------------------------ */
@@ -2356,6 +2362,400 @@ body.login #footer {
 }
 
 /* ------------------------------------------------------------------ */
+/* Docs                                                                */
+/* ------------------------------------------------------------------ */
+
+.jv-docs-page #content {
+    width: auto;
+    max-width: 1240px;
+}
+
+.jv-app-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.jv-app-picker label {
+    color: var(--jv-text-2);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Django's forms.css fixes select height below our padding. */
+.jv-app-picker select {
+    height: auto;
+    min-height: 36px;
+    max-width: 260px;
+}
+
+.jv-docs {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    align-items: start;
+    gap: 40px;
+    margin-top: 24px;
+}
+
+.jv-docs__toc {
+    position: sticky;
+    top: calc(var(--jv-header-h) + 16px);
+    max-height: calc(100vh - var(--jv-header-h) - 32px);
+    overflow-y: auto;
+    font-size: 13px;
+}
+
+.jv-docs__toc-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 8px;
+    color: var(--jv-text-3);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    list-style: none;
+    cursor: default;
+}
+
+.jv-docs__toc-title::-webkit-details-marker {
+    display: none;
+}
+
+.jv-docs__toc-title .jv-icon {
+    display: none;
+    transition: transform 0.15s;
+}
+
+.jv-docs__toc ol {
+    margin: 0;
+    padding: 0;
+    border-left: 1px solid var(--jv-border);
+    list-style: none;
+}
+
+.jv-docs__toc li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#container .jv-docs__toc a {
+    display: block;
+    margin-left: -1px;
+    padding: 5px 0 5px 12px;
+    border-left: 2px solid transparent;
+    color: var(--jv-text-2);
+    line-height: 1.35;
+}
+
+#container .jv-docs__toc a:hover {
+    color: var(--jv-text);
+}
+
+#container .jv-docs__toc a[aria-current="true"] {
+    border-left-color: var(--jv-accent);
+    color: var(--jv-accent-text);
+    font-weight: 600;
+}
+
+.jv-docs__body {
+    min-width: 0;
+    max-width: 880px;
+    color: var(--jv-text);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.jv-docs__body section {
+    padding-bottom: 12px;
+    scroll-margin-top: calc(var(--jv-header-h) + 16px);
+}
+
+.jv-docs__body section + section {
+    padding-top: 28px;
+    border-top: 1px solid var(--jv-border);
+}
+
+.jv-docs__body h2 {
+    margin: 0 0 12px;
+    padding: 0;
+    background: none;
+    color: var(--jv-text);
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-transform: none;
+}
+
+.jv-docs__body h3 {
+    margin: 24px 0 8px;
+    padding: 0;
+    background: none;
+    color: var(--jv-text);
+    font-size: 15px;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.jv-docs__body p,
+.jv-docs__body ul,
+.jv-docs__body ol {
+    margin: 0 0 12px;
+    padding-top: 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.jv-docs__body ul {
+    padding-left: 20px;
+}
+
+.jv-docs__body ul li,
+.jv-docs__body ol li {
+    margin-bottom: 6px;
+    padding: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    list-style: disc;
+}
+
+.jv-docs__body :not(pre) > code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--jv-surface-3);
+    color: var(--jv-text);
+    font-size: 0.88em;
+    overflow-wrap: anywhere;
+}
+
+.jv-docs__body .jv-callout :not(pre) > code {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    color: inherit;
+}
+
+.jv-docs__body .jv-table {
+    margin: 4px 0 16px;
+    border: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius-sm);
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    background: var(--jv-surface);
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.jv-docs__body .jv-table td,
+.jv-docs__body .jv-table tbody th {
+    vertical-align: top;
+}
+
+.jv-docs__body .jv-table tbody th {
+    width: 32%;
+    color: var(--jv-text-2);
+    font-weight: 500;
+}
+
+.jv-docs__body .jv-table-wrap .jv-table {
+    min-width: 640px;
+}
+
+.jv-docs__status {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.jv-docs__status .jv-callout {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.jv-docs__status .jv-callout .jv-icon {
+    margin-top: 2px;
+}
+
+.jv-docs__status .jv-callout p {
+    margin: 0;
+    font-size: inherit;
+}
+
+/* Numbered flow */
+.jv-docs__body ol.jv-flow {
+    display: grid;
+    gap: 10px;
+    margin: 0 0 16px;
+    padding: 0;
+    counter-reset: jv-flow;
+}
+
+.jv-docs__body ol.jv-flow li {
+    position: relative;
+    margin: 0;
+    padding: 12px 14px 12px 50px;
+    border: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius-sm);
+    background: var(--jv-surface);
+    list-style: none;
+    counter-increment: jv-flow;
+}
+
+.jv-docs__body ol.jv-flow li::before {
+    content: counter(jv-flow);
+    position: absolute;
+    top: 12px;
+    left: 14px;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--jv-accent-soft);
+    color: var(--jv-accent-text);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Checklist */
+.jv-docs__body ul.jv-checklist {
+    padding: 0;
+}
+
+.jv-docs__body ul.jv-checklist li {
+    position: relative;
+    padding-left: 28px;
+    list-style: none;
+}
+
+.jv-docs__body ul.jv-checklist li::before {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 0;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--jv-border-strong);
+    border-radius: 4px;
+}
+
+/* Code blocks */
+.jv-code {
+    margin: 8px 0 16px;
+    border: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius-sm);
+    overflow: hidden;
+    background: var(--jv-surface-2);
+}
+
+.jv-code__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 6px 4px 12px;
+    border-bottom: 1px solid var(--jv-border);
+    background: var(--jv-surface-3);
+    color: var(--jv-text-2);
+    font-family: var(--jv-mono);
+    font-size: 12px;
+}
+
+.jv-code__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: none;
+    color: var(--jv-text-2);
+    font: 500 12px var(--jv-font);
+    cursor: pointer;
+}
+
+.jv-code__copy:hover {
+    border-color: var(--jv-border);
+    background: var(--jv-surface);
+    color: var(--jv-text);
+}
+
+.jv-code pre {
+    margin: 0;
+    padding: 14px 16px;
+    overflow-x: auto;
+    background: none;
+    color: var(--jv-text);
+    font-size: 12.5px;
+    line-height: 1.6;
+    white-space: pre;
+    tab-size: 4;
+}
+
+.jv-code pre code {
+    padding: 0;
+    background: none;
+    font-size: inherit;
+}
+
+/* Endpoint table */
+.jv-endpoints td {
+    font-size: 13px;
+}
+
+.jv-endpoints td:first-child {
+    min-width: 260px;
+}
+
+.jv-endpoints code {
+    white-space: nowrap;
+}
+
+.jv-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.jv-fields strong {
+    margin-right: 4px;
+}
+
+.jv-endpoints .jv-muted {
+    margin-top: 2px;
+    font-size: 12.5px;
+}
+
+.jv-method {
+    display: inline-block;
+    min-width: 44px;
+    margin-right: 4px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font: 700 10.5px/1.6 var(--jv-mono);
+    letter-spacing: 0.03em;
+    text-align: center;
+}
+
+.jv-method--get { background: var(--jv-info-soft); color: var(--jv-info); }
+.jv-method--post { background: var(--jv-good-soft); color: var(--jv-good); }
+.jv-method--patch,
+.jv-method--put { background: var(--jv-warning-soft); color: var(--jv-warning); }
+.jv-method--delete { background: var(--jv-critical-soft); color: var(--jv-critical); }
+
+.jv-field-optional {
+    margin-left: 1px;
+    color: var(--jv-text-3);
+    font-weight: 700;
+}
+
+/* ------------------------------------------------------------------ */
 /* Responsive                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -2375,6 +2775,49 @@ body.login #footer {
 }
 
 @media (max-width: 1024px) {
+    .jv-docs {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .jv-docs__toc {
+        position: static;
+        max-height: none;
+        padding: 12px 16px;
+        border: 1px solid var(--jv-border);
+        border-radius: var(--jv-radius-sm);
+        background: var(--jv-surface);
+    }
+
+    .jv-docs__toc ol {
+        columns: 2;
+        column-gap: 16px;
+        border-left: 0;
+    }
+
+    #container .jv-docs__toc a {
+        margin-left: 0;
+        padding: 4px 0;
+        border-left: 0;
+    }
+
+    .jv-docs__toc-title {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .jv-docs__toc-title .jv-icon {
+        display: block;
+    }
+
+    .jv-docs__toc details[open] .jv-docs__toc-title {
+        margin-bottom: 8px;
+    }
+
+    .jv-docs__toc details[open] .jv-docs__toc-title .jv-icon {
+        transform: rotate(180deg);
+    }
+
     #changelist .changelist-form-container {
         flex-direction: column;
     }
@@ -2420,6 +2863,20 @@ body.login #footer {
 }
 
 @media (max-width: 480px) {
+    .jv-docs__toc ol {
+        columns: 1;
+    }
+
+    .jv-app-picker {
+        width: 100%;
+    }
+
+    .jv-app-picker select {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+    }
+
     /* The header keeps the essentials: menu, brand, avatar, log out, theme. */
     .jv-header-link[href$="/api/docs/"],
     .jv-header-link[href*="password_change"],
@@ -2554,7 +3011,18 @@ body.login #footer {
     #nav-sidebar,
     .toggle-nav-sidebar,
     .object-tools,
-    .submit-row {
+    .submit-row,
+    .jv-docs__toc,
+    .jv-app-picker,
+    .jv-code__copy {
         display: none !important;
+    }
+
+    .jv-docs {
+        display: block;
+    }
+
+    .jv-code pre {
+        white-space: pre-wrap;
     }
 }

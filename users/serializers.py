@@ -38,6 +38,7 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "employee_code",
             "is_active",
             "is_verified",
             "apps",
@@ -48,6 +49,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "email",
+            "employee_code",
             "is_active",
             "is_verified",
             "created_at",
@@ -60,6 +62,12 @@ class UserSerializer(serializers.ModelSerializer):
             },
             "email": {
                 "help_text": "Login email, stored lowercased. Read-only.",
+            },
+            "employee_code": {
+                "help_text": (
+                    "The person's code in Jivo's HR records, uppercase; empty "
+                    "if not set. Read-only: set by an administrator."
+                ),
             },
             "is_active": {
                 "help_text": "Inactive accounts can't log in or refresh tokens.",

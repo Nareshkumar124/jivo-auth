@@ -39,7 +39,7 @@ class UserCreationForm(AdminUserCreationForm):
 
     class Meta:
         model = User
-        fields = ("email", "is_verified")
+        fields = ("email", "employee_code", "is_verified")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -162,6 +162,7 @@ class UserAdmin(DjangoUserAdmin):
 
     list_display = [
         "account",
+        "code",
         "status",
         "access",
         "active_sessions",
@@ -186,6 +187,7 @@ class UserAdmin(DjangoUserAdmin):
         "email",
         "first_name",
         "last_name",
+        "employee_code",
     ]
 
     ordering = ["-created_at"]
@@ -210,6 +212,7 @@ class UserAdmin(DjangoUserAdmin):
                 "classes": ["wide"],
                 "fields": [
                     "email",
+                    "employee_code",
                     "is_verified",
                     "usable_password",
                     "password1",
@@ -283,7 +286,7 @@ class UserAdmin(DjangoUserAdmin):
 
         return [
             (None, {"fields": ["email", "password"]}),
-            ("Profile", {"fields": ["first_name", "last_name"]}),
+            ("Profile", {"fields": ["first_name", "last_name", "employee_code"]}),
             ("Application access", {"fields": access}),
             ("Status", {"fields": ["is_active", "is_verified"]}),
             (
@@ -340,6 +343,13 @@ class UserAdmin(DjangoUserAdmin):
             )
 
         return user.email
+
+    @admin.display(description="Employee code", ordering="employee_code")
+    def code(self, user):
+        if not user.employee_code:
+            return mark_safe('<span class="jv-muted">-</span>')
+
+        return format_html("<code>{}</code>", user.employee_code)
 
     @admin.display(description="Status")
     def status(self, user):

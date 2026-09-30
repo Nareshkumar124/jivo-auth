@@ -14,21 +14,56 @@ at `https://oms.jivo.in` and its API at `https://api.oms.jivo.in`.
 
 **Contents**
 
-1. [How it works](#how-it-works)
-2. [Before you start](#before-you-start)
-3. [Install](#install)
-4. [Configure](#configure)
-5. [Protect your views](#protect-your-views)
-6. [Who is the user?](#who-is-the-user)
-7. [Roles and permissions](#roles-and-permissions)
-8. [Frontend: logging in and calling your API](#frontend-logging-in-and-calling-your-api)
-9. [Looking up other users](#looking-up-other-users)
-10. [Testing](#testing)
-11. [Going live checklist](#going-live-checklist)
-12. [Troubleshooting](#troubleshooting)
-13. [Settings reference](#settings-reference)
+1. [The live service](#the-live-service)
+2. [How it works](#how-it-works)
+3. [Before you start](#before-you-start)
+4. [Install](#install)
+5. [Configure](#configure)
+6. [Protect your views](#protect-your-views)
+7. [Who is the user?](#who-is-the-user)
+8. [Roles and permissions](#roles-and-permissions)
+9. [Frontend: logging in and calling your API](#frontend-logging-in-and-calling-your-api)
+10. [API reference](#api-reference)
+11. [Looking up other users](#looking-up-other-users)
+12. [Testing](#testing)
+13. [Check your integration against production](#check-your-integration-against-production)
+14. [Going live checklist](#going-live-checklist)
+15. [Troubleshooting](#troubleshooting)
+16. [Settings reference](#settings-reference)
 
 ---
+
+## The live service
+
+These values were checked against production on **2026-09-30**. The live
+API schema matched the code in the repository at commit `cda275f`.
+
+| | |
+|---|---|
+| Base URL | `https://auth.jivo.in` (HTTP redirects to HTTPS) |
+| API reference | [https://auth.jivo.in/api/docs/](https://auth.jivo.in/api/docs/) (Swagger), schema at `/api/schema/` |
+| Health | `GET https://auth.jivo.in/api/v1/health/` → `{"status": "ok", "service": "auth-service"}` |
+| Signing keys | `https://auth.jivo.in/.well-known/jwks.json`: one RS256 key (2048-bit RSA), cached for 5 minutes (`Cache-Control: public, max-age=300`) |
+| Token issuer (`iss`) | `https://auth.jivo.in` |
+| Access token | 15 minutes |
+| Refresh token | 30 days, new one on every refresh; the previous one is accepted again for 30 seconds |
+| Client package | `jivo-auth-client` 0.2.0, at commit `cda275f` |
+
+> **Current status: check these first**
+>
+> - **Browser frontends are blocked by CORS.** No origin is allowed yet: a
+>   preflight from, say, `https://oms.jivo.in` gets no
+>   `Access-Control-Allow-Origin` header. Ask the Jivo Auth administrator to
+>   add your frontend's origin to `CORS_ALLOWED_ORIGINS` before you test
+>   login from a browser. Mobile apps and server-to-server calls aren't
+>   affected.
+> - **Self-registration is off.** `POST /api/v1/users/register/` answers
+>   `403 {"detail": "Registration is disabled."}`. Accounts are created by
+>   an administrator, who also grants them your application.
+> - **Emails aren't sent yet** (SMTP isn't configured). Forgot-password
+>   and verification links won't arrive. Until then, an administrator
+>   resets passwords in the admin panel. Accounts created by an
+>   administrator are verified already.
 
 ## How it works
 
@@ -70,8 +105,8 @@ The key points:
 |---|---|
 | Python 3.10+, Django 4.2+, DRF | Your project |
 | Your application's **slug** (`oms`) | A Jivo Auth administrator ([registering an application](register-an-application.md)) |
-| Your frontend's origin **allowed for CORS** at Jivo Auth | The same administrator |
-| A test user **granted access** to `oms` | The same administrator |
+| Your frontend's origin **allowed for CORS** at Jivo Auth | The same administrator. Currently no origin is allowed ([status](#the-live-service)). |
+| A **test account** granted access to `oms` | The same administrator (self-registration is off) |
 | An **API key** | Only if your server looks up users ([below](#looking-up-other-users)) |
 
 ## Install
@@ -82,14 +117,15 @@ SSH key or a deploy key.
 
 ```bash
 # uv
-uv add "jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git#subdirectory=packages/jivo-auth-client" --rev <commit-sha>
+uv add "jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git#subdirectory=packages/jivo-auth-client" --rev cda275f072c8f3595bce30382875fbe2d42ade6f
 ```
 
 ```text
 # requirements.txt
-jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git@<commit-sha>#subdirectory=packages/jivo-auth-client
+jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git@cda275f072c8f3595bce30382875fbe2d42ade6f#subdirectory=packages/jivo-auth-client
 ```
 
+That commit carries client **0.2.0**, the version this guide describes.
 Pin a commit or tag rather than `main`. In Docker builds, pass a
 read-only GitHub token as a build secret, or install a wheel built with
 `uv build packages/jivo-auth-client`.
@@ -315,19 +351,14 @@ class IsManager(permissions.BasePermission):
 
 ## Frontend: logging in and calling your API
 
-Jivo Auth's endpoints, relative to `https://auth.jivo.in/api/v1`:
-
-| Call | Body | Returns |
-|---|---|---|
-| `POST /auth/login/` | `{email, password, device_name?}` | `{access, refresh}` |
-| `POST /auth/refresh/` | `{refresh}` | `{access, refresh}`. **Store both**: the refresh token changes. |
-| `POST /auth/logout/` | `{refresh}` | Ends this device's session. Works with an expired access token. |
-| `GET /users/me/` | access token in `Authorization` | Profile: id, email, names, `apps` |
-| `POST /users/resend-verification/` | `{email}` | Sends a new verification email |
+The frontend needs three Jivo Auth calls: `POST /api/v1/auth/login/`,
+`POST /api/v1/auth/refresh/` and `POST /api/v1/auth/logout/`. The
+[API reference](#api-reference) below lists every endpoint with its
+request, response and errors.
 
 Forgotten passwords: link to `https://auth.jivo.in/forgot-password/`. Jivo
-Auth hosts the whole reset flow. Full reference:
-[Swagger](https://auth.jivo.in/api/docs/).
+Auth hosts the whole reset flow, but it depends on email, which isn't
+configured yet ([status](#the-live-service)).
 
 A minimal client, refreshing once and on demand, however many requests fail
 at the same time:
@@ -438,6 +469,137 @@ Things to get right:
   access token for up to 15 minutes. The next refresh then fails, or
   returns a token without `oms`.
 
+## API reference
+
+All paths are relative to `https://auth.jivo.in`. Request and response
+bodies are JSON (`Content-Type: application/json`). "Bearer" means
+`Authorization: Bearer <access token>`, and "App key" means
+`X-Jivo-App-Key: <API key>`. [Swagger](https://auth.jivo.in/api/docs/)
+has the same reference with examples, and lets you try calls.
+
+### Tokens
+
+| Endpoint | Auth | Request body | Success |
+|---|---|---|---|
+| `POST /api/v1/auth/login/` | none | `email`, `password`, `device_name`? | `200 {access, refresh}` |
+| `POST /api/v1/auth/refresh/` | none | `refresh` | `200 {access, refresh}` (both new) |
+| `POST /api/v1/auth/logout/` | none | `refresh` | `200 {message}` |
+| `POST /api/v1/auth/verify/` | none | `token` (access or refresh) | `200 {}` |
+| `GET /.well-known/jwks.json` | none | | `200 {keys: [{kty, use, alg, kid, n, e}]}` |
+
+- **Login.** `email` is case-insensitive. `device_name` labels the session
+  in the user's session list (e.g. `"OMS web"`).
+- **Refresh.** Always store both returned tokens. For 30 seconds after a
+  refresh, the refresh token that was sent still works and returns the
+  same new pair, which covers requests that were already in flight.
+  Sending it after that is treated as token theft: the whole session is
+  revoked.
+- **Logout** needs no access token (an `Authorization` header is ignored),
+  so it works after the access token has expired.
+- **Verify** is for clients that can't check a JWT themselves. Your DRF API
+  doesn't need it.
+
+### Account and password
+
+| Endpoint | Auth | Request body | Success |
+|---|---|---|---|
+| `GET /api/v1/users/me/` | Bearer | | `200` profile (below) |
+| `PATCH /api/v1/users/me/` | Bearer | `first_name`?, `last_name`? | `200` profile |
+| `POST /api/v1/users/change-password/` | Bearer | `current_password`, `new_password`, `new_password_confirm` | `200 {message}`; every session of the user ends |
+| `POST /api/v1/users/forgot-password/` | none | `email` | `200 {message}`, the same whether or not the account exists |
+| `POST /api/v1/users/reset-password/` | none | `token`, `new_password`, `new_password_confirm` | `200 {message}`; every session ends |
+| `POST /api/v1/users/verify-email/` | none | `token` | `200 {message}` |
+| `POST /api/v1/users/resend-verification/` | none | `email` | `200 {message}`, the same whether or not the account exists |
+| `POST /api/v1/users/register/` | none | `email`, `password`, `password_confirm`, `first_name`?, `last_name`? | **Disabled** on production: `403` |
+
+The profile returned by `/users/me/`:
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "email": "alice@jivo.in",
+  "first_name": "Alice",
+  "last_name": "Smith",
+  "employee_code": "JIVO1234",
+  "is_active": true,
+  "is_verified": true,
+  "apps": ["oms"],
+  "created_at": "2026-09-30T06:07:16.357563Z",
+  "updated_at": "2026-09-30T06:07:16.399186Z"
+}
+```
+
+`employee_code` is the person's code in Jivo's HR records, uppercase, or
+`""` if an administrator hasn't set one. It's unique when set, and
+read-only here: `PATCH` changes only the names.
+
+Passwords need at least 8 characters with an uppercase letter, a lowercase
+letter, a digit and a special character. Common passwords and ones too
+similar to the email or name are refused.
+
+### Sessions (one per signed-in device)
+
+| Endpoint | Auth | Success |
+|---|---|---|
+| `GET /api/v1/auth/sessions/` | Bearer | `200 [{id, device_name, ip_address, user_agent, created_at, last_used_at, revoked_at, is_active}]` |
+| `POST /api/v1/auth/sessions/{id}/revoke/` | Bearer | `200 {message}`; `404` if it isn't an active session of this user |
+| `POST /api/v1/auth/sessions/revoke-all/` | Bearer | `200 {message, revoked_sessions}` |
+
+### Server-to-server
+
+| Endpoint | Auth | Success |
+|---|---|---|
+| `GET /api/v1/apps/users/?id=<uuid>&id=<uuid>` | App key | `200 [{id, email, first_name, last_name, employee_code, is_active}]`: only users with access to your application; at most 100 `id`s |
+
+Use `AuthClient().get_users()` rather than calling this yourself
+([below](#looking-up-other-users)).
+
+### Errors
+
+Errors other than validation errors have a `detail`, and token errors add
+a machine-readable `code`:
+
+```json
+{"detail": "Token is invalid", "code": "token_not_valid"}
+```
+
+Validation errors (400) map each field to its messages; errors not tied to
+a field go under `non_field_errors`:
+
+```json
+{"email": ["This field is required."], "password": ["This field is required."]}
+```
+
+What the frontend should do with each error from Jivo Auth:
+
+| Status | Body | Meaning, and what to do |
+|---|---|---|
+| 401 | `No active account found with the given credentials` | Login: wrong email or password, or the account is deactivated. |
+| 401 | `code: email_not_verified` | Login: the email isn't verified yet. |
+| 401 | `code: token_not_valid` | Refresh: the token expired, was already used, or its session was logged out or revoked. Send the user to sign in. |
+| 401 | `code: no_active_account` | Refresh: the account was deactivated. Sign the user out. |
+| 403 | `Registration is disabled.` | Register: turned off on production. |
+| 429 | `Request was throttled. Expected available in N seconds.` | Too many attempts. Wait for the number of seconds in the `Retry-After` header. |
+
+Your own API's errors (from `JivoJWTAuthentication`) are listed under
+[Protect your views](#protect-your-views).
+
+### Rate limits
+
+Per client IP unless stated. Over the limit, the answer is `429` with a
+`Retry-After` header.
+
+| Endpoint | Limit |
+|---|---|
+| Login | 5 per minute per account and IP, and 30 per minute per IP |
+| Forgot password | 3 per minute |
+| Reset password | 5 per minute |
+| Verify email | 10 per minute |
+| Resend verification | 3 per minute |
+| Register | 5 per hour |
+| `/api/v1/apps/users/` | 10,000 per hour per application |
+| Everything else | 100 per minute anonymous, 1,000 per hour per signed-in user |
+
 ## Looking up other users
 
 To show who created an order, or fill an "assign to" picker, your server
@@ -464,11 +626,13 @@ except AuthServiceError as exc:                  # .status, .data; AuthServiceUn
     ...
 
 # [{"id": "3fa8...", "email": "alice@jivo.in", "first_name": "Alice",
-#   "last_name": "Smith", "is_active": True}, ...]
+#   "last_name": "Smith", "employee_code": "JIVO1234", "is_active": True}, ...]
 ```
 
 Users without access to `oms` are never returned. Cache the results if you
-call this often.
+call this often. `employee_code` is the way to match Jivo users to your own
+HR or ERP records (it's `""` when not set). It isn't a token claim, so read
+it from here or from `/api/v1/users/me/`.
 
 **Calling another Jivo API on the user's behalf:** forward their token,
 `headers={"Authorization": f"Bearer {request.auth}"}`. The other API
@@ -564,6 +728,41 @@ class AuthTests(APITestCase):
         self.assertEqual(self.client.get("/orders/").status_code, 401)
 ```
 
+## Check your integration against production
+
+Run these from the server that hosts your API, with a test account an
+administrator created and granted `oms`. Keep repeated tries in mind: login
+allows 5 attempts per minute per account, and every attempt shows in Jivo
+Auth's audit log.
+
+```bash
+# 1. Your server reaches Jivo Auth and its signing keys.
+curl -s https://auth.jivo.in/api/v1/health/
+curl -s https://auth.jivo.in/.well-known/jwks.json
+
+# 2. Your configuration passes the startup checks.
+python manage.py check
+
+# 3. Sign in as the test account and keep the access token.
+ACCESS=$(curl -s -X POST https://auth.jivo.in/api/v1/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"email": "tester@jivo.in", "password": "<password>", "device_name": "smoke test"}' \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin)["access"])')
+
+# 4. The token verifies inside your app, with "oms" in its apps claim.
+python manage.py shell -c "from jivo_auth.tokens import decode_access_token as d; print(d('$ACCESS'))"
+
+# 5. Your API accepts it: expect 200 (or your view's own answer), not 401/403.
+curl -i https://api.oms.jivo.in/orders/ -H "Authorization: Bearer $ACCESS"
+```
+
+Step 4 prints the claims (`sub`, `email`, `apps`, `iss`, `exp`, ...). Most
+failures show up here:
+
+- **`Invalid token.`:** check `URL` and your server's outbound HTTPS.
+- **`Token has expired.`:** check the server's clock.
+- **`apps` doesn't list `oms`:** the account wasn't granted access.
+
 ## Going live checklist
 
 - [ ] `JIVO_AUTH["URL"]` is exactly `https://auth.jivo.in`: https, no
@@ -574,11 +773,13 @@ class AuthTests(APITestCase):
       fetch the public key on the first request and after a key change.
 - [ ] Your server's clock is synced (NTP). Up to 10 seconds of drift is
       tolerated.
-- [ ] Jivo Auth allows your frontend's origin (CORS), and your API allows
-      it too if it's on a different origin.
+- [ ] Jivo Auth allows your frontend's origin (CORS; none is allowed yet),
+      and your API allows it too if it's on a different origin.
 - [ ] The frontend stores **both** tokens after every refresh, and handles
       401 (refresh, then log in) and 403 (no access).
 - [ ] Real users are granted `oms` in the Jivo Auth admin.
+- [ ] The [smoke test](#check-your-integration-against-production) passes
+      from your production server.
 - [ ] `API_KEY`, if used, is in your secret store and never in frontend
       code or Git.
 
@@ -591,7 +792,10 @@ class AuthTests(APITestCase):
 | Every request: 401 `Invalid token.` | Your `URL` doesn't match the token's `iss` (`http` vs `https`, a trailing path). Or the public key can't be fetched: look for `Could not fetch Jivo Auth signing keys` in your logs. |
 | 401 `Token has expired.` straight after login | Server clock off by more than 10 seconds. |
 | 403 for someone who should have access | Not granted in the Jivo Auth admin yet, or granted after their token was issued. They get it within 15 minutes, or at once by logging in again. |
-| Browser: `blocked by CORS policy` on `auth.jivo.in` | Ask the Jivo Auth admin to add your frontend's origin. |
+| Browser: `blocked by CORS policy` on `auth.jivo.in` | Your frontend's origin isn't in Jivo Auth's `CORS_ALLOWED_ORIGINS`: the preflight answers 200 without `Access-Control-Allow-Origin`. Ask the Jivo Auth admin to add it. |
+| Login from a script works, from the browser it doesn't | The same CORS cause as above: only browsers enforce CORS. |
+| `403 Registration is disabled.` | Expected on production: ask an administrator to create the account. |
+| Password reset or verification email never arrives | Email delivery isn't configured on production yet. An administrator can reset the password in the admin panel. |
 | Browser: `blocked by CORS policy` on your API | Configure `django-cors-headers` in your API. |
 | Users are logged out unexpectedly | The frontend isn't saving the new refresh token after each refresh, or two tabs refresh with the same token more than 30 seconds apart. Share tokens between tabs through `localStorage`, as in the example. |
 | `IsAdminUser` always denies | `JivoUser.is_staff` is always `False`. Use local users, or your own permission class. |

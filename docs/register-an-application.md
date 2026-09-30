@@ -92,6 +92,7 @@ as server-rendered Django sites do.
 | Log a user out of all devices | Open the user → **Log out everywhere**, or select several → **Log out selected users everywhere**. |
 | See or end a user's sessions | The user's page lists their sessions. Or Admin → **Sessions**: filter by status or last use, search by email or IP, then **Revoke selected sessions**. |
 | Reset a user's password | Open the user → **Send password reset** (they choose a new one), or **Reset password** under the password field to set one yourself. Setting it logs them out everywhere. |
+| Set a user's employee code | Open the user → **Profile** → **Employee code**. It's stored uppercase, must be unique, and applications can read it (it's how they match people to HR records). Search the user list by it. |
 | Create a user who can't self-register | **Users** → **Add**. Leave **Email verified** ticked if you know the address is right. |
 | Rotate an application's API key | Open the application → **Rotate API key** (or `docker compose exec auth python manage.py app_api_key oms`). The old key stops working **immediately**, so update the application at the same time. |
 | See who did what | Admin → **Audit log**: sign-ins, failed sign-ins, password changes, access changes and key rotations. Filter by event, severity or time; export to CSV. Each user's page shows their recent activity too. |

@@ -1,0 +1,416 @@
+{% extends "admin/base_site.html" %}
+{% load i18n adminpanel %}
+
+{% block bodyclass %}{{ block.super }} jv-docs-page{% endblock %}
+
+{% block breadcrumbs %}
+<ol class="breadcrumbs">
+  <li><a href="{% url 'admin:index' %}">{% translate 'Home' %}</a></li>
+  <li><a href="{% url 'admin:docs' %}">{% translate 'Docs' %}</a></li>
+  <li aria-current="page">{% translate 'Django REST Framework' %}</li>
+</ol>
+{% endblock %}
+
+{% block content_title %}
+  <div class="jv-page-head">
+    <div>
+      <h1>{{ title }}</h1>
+      <p class="jv-page-head__sub">
+        Protect a DRF API with Jivo sign-in, verified locally in your app. The
+        values on this page are read from this server's configuration.
+      </p>
+    </div>
+    {% if applications %}
+      <form class="jv-app-picker" method="get">
+        <label for="jv-app">Examples for</label>
+        <select id="jv-app" name="app" data-autosubmit>
+          {% for app in applications %}
+            <option value="{{ app.slug }}"{% if app.slug == slug %} selected{% endif %}>{{ app.name }} ({{ app.slug }})</option>
+          {% endfor %}
+        </select>
+        <noscript><button type="submit" class="jv-button">Show</button></noscript>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="jv-docs">
+  <nav class="jv-docs__toc" aria-label="On this page">
+    <details open data-docs-toc>
+    <summary class="jv-docs__toc-title">On this page {% icon "arrow-down" 14 %}</summary>
+    <ol>
+      <li><a href="#overview">How it works</a></li>
+      <li><a href="#service">This service</a></li>
+      <li><a href="#before">Before you start</a></li>
+      <li><a href="#install">Install</a></li>
+      <li><a href="#configure">Configure</a></li>
+      <li><a href="#protect">Protect your views</a></li>
+      <li><a href="#user">Who is the user?</a></li>
+      <li><a href="#roles">Roles and permissions</a></li>
+      <li><a href="#frontend">Frontend</a></li>
+      <li><a href="#reference">API reference</a></li>
+      <li><a href="#errors">Errors</a></li>
+      <li><a href="#limits">Rate limits</a></li>
+      <li><a href="#lookup">Looking up users</a></li>
+      <li><a href="#testing">Testing</a></li>
+      <li><a href="#smoke">Check against this server</a></li>
+      <li><a href="#checklist">Go-live checklist</a></li>
+      <li><a href="#troubleshooting">Troubleshooting</a></li>
+      <li><a href="#settings">Settings reference</a></li>
+    </ol>
+    </details>
+  </nav>
+
+  <article class="jv-docs__body">
+
+    {# ------------------------------------------------------------------ #}
+    <section id="overview">
+      <h2>How it works</h2>
+      <ol class="jv-flow">
+        <li><strong>Sign in.</strong> Your frontend sends the email and password to <code>{{ facts.base }}/api/v1/auth/login/</code> and gets an <em>access</em> token ({{ facts.access }}) and a <em>refresh</em> token ({{ facts.refresh }}).</li>
+        <li><strong>Call your API.</strong> Every request to your DRF API carries <code>Authorization: Bearer &lt;access token&gt;</code>.</li>
+        <li><strong>Verify locally.</strong> Your API checks the token itself with the <code>jivo-auth-client</code> package: signature, expiry, issuer, and that <code>{{ slug }}</code> is in its <code>apps</code> claim. There's no call to this service per request.</li>
+        <li><strong>Refresh.</strong> When your API answers 401 because the access token expired, the frontend exchanges the refresh token for a new pair and retries.</li>
+      </ol>
+      <p>
+        Your API never sees passwords. The package fetches this service's public key once from
+        <code>{{ facts.jwks_url }}</code> and keeps it in memory, so your API keeps working through short
+        outages here. <strong>Access is per application:</strong> a user whose token doesn't list
+        <code>{{ slug }}</code> gets 403 from your API, however valid the token is.
+      </p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="service">
+      <h2>This service</h2>
+      <table class="jv-table jv-docs__facts">
+        <tbody>
+          <tr><th scope="row">Base URL</th><td><code>{{ facts.base }}</code></td></tr>
+          <tr><th scope="row">Token issuer (<code>iss</code>)</th><td><code>{{ facts.issuer }}</code></td></tr>
+          <tr><th scope="row">Signing keys</th><td><code>{{ facts.jwks_url }}</code>{% if facts.kid %} · {{ facts.algorithm }}, key <code>{{ facts.kid|truncatechars:16 }}</code>{% endif %}</td></tr>
+          <tr><th scope="row">Access token</th><td>{{ facts.access }}</td></tr>
+          <tr><th scope="row">Refresh token</th><td>{{ facts.refresh }}, replaced on every refresh; the previous one still works for {{ facts.grace }} seconds</td></tr>
+          <tr><th scope="row">Swagger</th><td><a href="{{ facts.docs_url }}">{{ facts.docs_url }}</a></td></tr>
+          <tr><th scope="row">Client package</th><td><code>jivo-auth-client</code>{% if facts.client_version %} {{ facts.client_version }}{% endif %}, in <code>{{ facts.repository }}</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="jv-docs__status">
+        {% if status.cors_origins or status.cors_patterns %}
+          <div class="jv-callout jv-callout--good">
+            {% icon "check" 16 %}
+            <p><strong>Browser origins allowed (CORS):</strong>
+              {% for origin in status.cors_origins %}<code>{{ origin }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}{% if status.cors_origins and status.cors_patterns %}, {% endif %}{% for pattern in status.cors_patterns %}<code>{{ pattern }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}.
+              A browser frontend on any other origin can't call this service.</p>
+          </div>
+        {% else %}
+          <div class="jv-callout jv-callout--warning">
+            {% icon "alert" 16 %}
+            <p><strong>No browser origin is allowed (CORS).</strong> A frontend running in a browser can't call this service
+              until its origin is added to <code>CORS_ALLOWED_ORIGINS</code> in the server's <code>.env</code>. Mobile apps and
+              server-to-server calls aren't affected.</p>
+          </div>
+        {% endif %}
+
+        {% if status.registration %}
+          <div class="jv-callout jv-callout--info">{% icon "info" 16 %}<p><strong>Self-registration is on.</strong> New accounts still get access to no application until an administrator grants it.</p></div>
+        {% else %}
+          <div class="jv-callout jv-callout--info">{% icon "info" 16 %}<p><strong>Self-registration is off.</strong> <code>POST /api/v1/users/register/</code> answers <code>403</code>; administrators create accounts in <a href="{% url 'admin:users_user_changelist' %}">Users</a> and grant their applications.</p></div>
+        {% endif %}
+
+        {% if status.verified_email %}
+          <div class="jv-callout jv-callout--info">{% icon "info" 16 %}<p><strong>A verified email is required to sign in.</strong> Otherwise login answers 401 with <code>code: email_not_verified</code>. Accounts created by an administrator are verified already.</p></div>
+        {% endif %}
+
+        <div class="jv-callout {% if status.email_state == 'missing' %}jv-callout--warning{% else %}jv-callout--info{% endif %}">
+          {% if status.email_state == 'missing' %}{% icon "alert" 16 %}{% else %}{% icon "mail" 16 %}{% endif %}
+          <p><strong>Email:</strong> {{ status.email_text }}{% if status.email_state == 'missing' %} Until it is, administrators reset passwords in the admin panel.{% endif %}</p>
+        </div>
+      </div>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="before">
+      <h2>Before you start</h2>
+      <table class="jv-table">
+        <thead><tr><th scope="col">You need</th><th scope="col">From</th></tr></thead>
+        <tbody>
+          <tr><td>Python 3.10+, Django 4.2+, Django REST Framework</td><td>Your project</td></tr>
+          <tr><td>Your application's <strong>slug</strong>{% if slug != 'your-app' %} (here: <code>{{ slug }}</code>){% endif %}</td><td>{% if perms.applications.view_application %}<a href="{% url 'admin:applications_application_changelist' %}">Applications</a>{% else %}A Jivo Auth administrator{% endif %}</td></tr>
+          <tr><td>Your frontend's origin <strong>allowed for CORS</strong> here, if it runs in a browser</td><td>The server administrator</td></tr>
+          <tr><td>A <strong>test account</strong> granted your application</td><td>{% if perms.users.add_user %}<a href="{% url 'admin:users_user_add' %}">Add user</a>{% else %}A Jivo Auth administrator{% endif %}</td></tr>
+          <tr><td>An <strong>API key</strong>, only if your server looks users up</td><td>The application's page: <em>Create API key</em></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="install">
+      <h2>Install</h2>
+      <p>
+        The package lives in the private repository <code>{{ facts.repository }}</code>. The machine that
+        installs it needs read access, through Git credentials, an SSH key or a deploy key. Replace
+        <code>&lt;commit&gt;</code> with a commit or tag from that repository, so a change here never reaches your
+        application unannounced.
+      </p>
+      {% include "adminpanel/partials/code.html" with code=samples.install_uv label="uv" id="code-install-uv" %}
+      {% include "adminpanel/partials/code.html" with code=samples.install_pip label="pip" id="code-install-pip" %}
+      <p>It installs Django REST Framework and PyJWT (with <code>cryptography</code>) if you don't have them. For Docker builds, pass a read-only GitHub token as a build secret, or install a wheel built with <code>uv build packages/jivo-auth-client</code>.</p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="configure">
+      <h2>Configure</h2>
+      {% include "adminpanel/partials/code.html" with code=samples.settings label="settings.py" id="code-settings" %}
+      <p>
+        Each key can also come from an environment variable named <code>JIVO_AUTH_&lt;KEY&gt;</code>, such as
+        <code>JIVO_AUTH_APP</code>, when it's missing from the dict. Then run <code>python manage.py check</code>, which reports:
+      </p>
+      <ul>
+        <li><code>jivo_auth.E003</code>: <code>APP</code> isn't set. Every user is refused, so a forgotten setting can't let every Jivo account in. For an API that really is for all Jivo users, set <code>"ALLOW_ALL_USERS": True</code> instead.</li>
+        <li><code>jivo_auth.E001</code>: a misspelled key in <code>JIVO_AUTH</code>.</li>
+        <li><code>jivo_auth.E002</code>: no way to verify tokens (no <code>URL</code>).</li>
+      </ul>
+      <p>If your frontend and API are on different origins, your API needs CORS for the frontend too:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.api_cors label="settings.py (your API)" id="code-api-cors" %}
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="protect">
+      <h2>Protect your views</h2>
+      <p>With the settings above, every view needs a valid token. Opt out explicitly where a view is public:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.views label="views.py" id="code-views" %}
+      <p>Requests without a usable token are rejected before your view runs:</p>
+      <table class="jv-table">
+        <thead><tr><th scope="col">Status</th><th scope="col"><code>detail</code></th><th scope="col">The client should</th></tr></thead>
+        <tbody>
+          <tr><td>401</td><td>Authentication credentials were not provided.</td><td>Sign in.</td></tr>
+          <tr><td>401</td><td>Token has expired.</td><td>Refresh, then retry once.</td></tr>
+          <tr><td>401</td><td>Invalid token.</td><td>Refresh; if that fails, sign in again.</td></tr>
+          <tr><td>401</td><td>Invalid authorization header.</td><td>Fix the bug: send <code>Bearer &lt;token&gt;</code> with one space and no quotes.</td></tr>
+          <tr><td>401</td><td>Access token required.</td><td>Fix the bug: it sent the refresh token.</td></tr>
+          <tr><td>401</td><td>User account is disabled.</td><td>Only with <code>LOCAL_USERS</code>: the local record is deactivated.</td></tr>
+          <tr><td>403</td><td>Your account does not have access to this application.</td><td>Show "no access". Refreshing won't help until access is granted.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        <code>JivoJWTAuthentication</code> only handles <code>Authorization: Bearer …</code>; other schemes are left to other
+        authentication classes, so it combines with, for example, <code>SessionAuthentication</code>. With drf-spectacular, the package
+        registers a <code>jivoAuth</code> bearer scheme, so your Swagger UI's Authorize button takes a Jivo access token.
+      </p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="user">
+      <h2>Who is the user?</h2>
+      <p>By default <code>request.user</code> is a <code>JivoUser</code> built from the token, without any database query:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.who_am_i label="views.py" id="code-me" %}
+      <table class="jv-table">
+        <thead><tr><th scope="col">Attribute</th><th scope="col">Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code>, <code>pk</code></td><td>The Jivo user ID (<code>uuid.UUID</code>), the token's <code>sub</code></td></tr>
+          <tr><td><code>email</code></td><td>Verified, lowercase</td></tr>
+          <tr><td><code>apps</code></td><td>Tuple of application slugs; <code>has_app("{{ slug }}")</code> checks one</td></tr>
+          <tr><td><code>claims</code></td><td>The whole verified token payload</td></tr>
+          <tr><td><code>is_staff</code>, <code>is_superuser</code>, <code>has_perm()</code></td><td>Always false: permissions belong to your app</td></tr>
+        </tbody>
+      </table>
+      <p><code>request.auth</code> is the raw token, for forwarding to another Jivo API. The token doesn't carry names or the employee code; read those from <code>GET /api/v1/users/me/</code> or the <a href="#lookup">user lookup</a>.</p>
+
+      <h3>Stateless (default): store the Jivo user ID</h3>
+      {% include "adminpanel/partials/code.html" with code=samples.stateless label="models.py / views.py" id="code-stateless" %}
+
+      <h3>Local users: real foreign keys</h3>
+      <p>
+        With <code>LOCAL_USERS</code>, <code>request.user</code> is a row of your <code>AUTH_USER_MODEL</code>, created on the user's
+        first request with the Jivo ID in <code>username</code>, the token's email and an unusable password. Deactivating that row
+        blocks the user in your API only. The token's claims are on <code>request.user.jivo_claims</code>.
+      </p>
+      {% include "adminpanel/partials/code.html" with code=samples.local_users label="settings.py / models.py" id="code-local" %}
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="roles">
+      <h2>Roles and permissions</h2>
+      <p>This service decides who the user is and whether they may use <code>{{ slug }}</code>. Finer rules, such as managers and clerks or record ownership, belong to your application:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.permissions label="permissions.py" id="code-permissions" %}
+      <p>With local users, Django's groups and permissions work as usual (<code>DjangoModelPermissions</code>, <code>IsAdminUser</code>).</p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="frontend">
+      <h2>Frontend</h2>
+      <p>
+        The frontend signs in, refreshes and signs out at this service, and sends the access token to your API. This client refreshes
+        once for any number of failing requests, shares tokens between tabs, and signs the user out when the session has ended:
+      </p>
+      {% include "adminpanel/partials/code.html" with code=samples.frontend label="auth.js" id="code-frontend" %}
+      <ul>
+        <li><strong>Store both tokens after every refresh.</strong> The refresh token that was sent keeps working for {{ facts.grace }} seconds, which covers requests already in flight. Sending it after that is treated as theft and ends the session.</li>
+        <li><strong>Where tokens live.</strong> <code>localStorage</code> survives reloads but any injected script can read it, so keep a strict Content-Security-Policy. On mobile, use the Keychain or Keystore.</li>
+        <li><strong>Changes take up to {{ facts.access }}.</strong> After an administrator removes access or the user changes their password, your API accepts the current access token until it expires; the next refresh then fails or drops <code>{{ slug }}</code>.</li>
+        <li><strong>Forgotten passwords:</strong> link to <a href="{{ facts.base }}/forgot-password/"><code>{{ facts.base }}/forgot-password/</code></a>{% if status.email_state == 'missing' %} (it needs email, which isn't configured yet){% endif %}.</li>
+      </ul>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="reference">
+      <h2>API reference</h2>
+      <p>
+        Generated from this server's API schema: the same one <a href="{{ facts.docs_url }}">Swagger</a> shows, with examples and a
+        way to try calls. <strong>Bearer</strong> means <code>Authorization: Bearer &lt;access token&gt;</code>; <strong>App key</strong>
+        means <code>X-Jivo-App-Key: &lt;API key&gt;</code>. Request bodies are JSON; optional fields are marked
+        <span class="jv-field-optional">?</span>, and <code>?name=</code> is a query parameter.
+      </p>
+      {% for group in api_groups %}
+        <h3>{{ group.tag }}</h3>
+        <div class="jv-table-wrap">
+          <table class="jv-table jv-endpoints">
+            <thead>
+              <tr><th scope="col">Endpoint</th><th scope="col">Auth</th><th scope="col">Request</th><th scope="col">Success</th></tr>
+            </thead>
+            <tbody>
+              {% for endpoint in group.endpoints %}
+                <tr id="{{ endpoint.anchor }}">
+                  <td>
+                    <span class="jv-method jv-method--{{ endpoint.method|lower }}">{{ endpoint.method }}</span>
+                    <code>{{ endpoint.path }}</code>
+                    <div class="jv-muted">{{ endpoint.summary }}</div>
+                  </td>
+                  <td>{{ endpoint.auth }}</td>
+                  <td><div class="jv-fields">{% for field in endpoint.request %}<code>{% if field.query %}?{{ field.name }}={% else %}{{ field.name }}{% endif %}{% if not field.required %}<span class="jv-field-optional" title="Optional">?</span>{% endif %}</code>{% empty %}<span class="jv-muted">-</span>{% endfor %}</div></td>
+                  <td><div class="jv-fields"><strong>{{ endpoint.status }}</strong>{% for field in endpoint.response %}<code>{{ field.name }}</code>{% endfor %}</div></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+      <ul>
+        <li>Refresh returns a new pair every time: store both.</li>
+        <li>Logout needs no access token, so it works after the access token has expired.</li>
+        <li><code>employee_code</code> is <code>""</code> when not set, and read-only through the API: administrators set it here.</li>
+        <li><code>/api/v1/apps/users/</code> takes <code>?id=</code> once per user, at most 100; without it, it lists everyone with access to the key's application.</li>
+        <li>Forgot password answers the same whether or not the account exists. <code>reset_token</code> is only included on a development server (DEBUG on){% if status.debug %}, as this one is{% else %}; this one doesn't send it{% endif %}.</li>
+      </ul>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="errors">
+      <h2>Errors</h2>
+      <p>Errors carry a <code>detail</code>, and token errors a machine-readable <code>code</code>, e.g. <code>{"detail": "Token is invalid", "code": "token_not_valid"}</code>. Validation errors (400) map each field to its messages, with <code>non_field_errors</code> for the rest.</p>
+      <table class="jv-table">
+        <thead><tr><th scope="col">Status</th><th scope="col">Body</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>401</td><td>No active account found with the given credentials</td><td>Login: wrong email or password, or the account is deactivated.</td></tr>
+          <tr><td>401</td><td><code>code: email_not_verified</code></td><td>Login: the email isn't verified yet.</td></tr>
+          <tr><td>401</td><td><code>code: token_not_valid</code></td><td>Refresh: expired, already used, or the session was logged out or revoked. Sign in again.</td></tr>
+          <tr><td>401</td><td><code>code: no_active_account</code></td><td>Refresh: the account was deactivated.</td></tr>
+          <tr><td>403</td><td>Registration is disabled.</td><td>Register, when self-registration is off.</td></tr>
+          <tr><td>429</td><td>Request was throttled. Expected available in N seconds.</td><td>Too many attempts: wait for the <code>Retry-After</code> header's seconds.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="limits">
+      <h2>Rate limits</h2>
+      <p>Per client IP unless stated. Over a limit, the answer is 429 with a <code>Retry-After</code> header.</p>
+      <table class="jv-table">
+        <tbody>
+          {% for label, limit in rate_limits %}
+            <tr><th scope="row">{{ label }}</th><td>{{ limit }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="lookup">
+      <h2>Looking up users</h2>
+      <p>
+        To show who created a record, fill an "assign to" picker or match people to your HR or ERP records by
+        <code>employee_code</code>, your server can list the users who have access to <code>{{ slug }}</code>. This needs the
+        application's API key: a server-side secret that never goes to a browser or into Git.
+      </p>
+      {% include "adminpanel/partials/code.html" with code=samples.lookup label="Python" id="code-lookup" %}
+      <p>Users without access to <code>{{ slug }}</code> are never returned. Cache the result if you call it often.</p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="testing">
+      <h2>Testing</h2>
+      <p>Don't call this service from your tests. For most view tests, skip authentication:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.test_force label="tests.py" id="code-test-force" %}
+      <p>To exercise the real token check, sign your own tokens with a test key:</p>
+      {% include "adminpanel/partials/code.html" with code=samples.test_tokens label="tests/jivo.py" id="code-test-tokens" %}
+      <p>Then decorate a test class with <code>@use_test_keys</code> and send <code>Authorization: Bearer {make_access_token()}</code>: tokens for another app get 403, expired ones (<code>exp=0</code>) get 401.</p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="smoke">
+      <h2>Check against this server</h2>
+      <p>From the server that hosts your API, with a test account granted <code>{{ slug }}</code>. Login allows a few attempts per minute per account, and every attempt appears in the <a href="{% url 'admin:audit_auditevent_changelist' %}">audit log</a>.</p>
+      {% include "adminpanel/partials/code.html" with code=samples.smoke_test label="shell" id="code-smoke" %}
+      <p>Step 4 prints the claims. <code>Invalid token.</code> points at <code>URL</code> or outbound HTTPS; <code>Token has expired.</code> at the server clock; an <code>apps</code> list without <code>{{ slug }}</code> at a missing grant.</p>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="checklist">
+      <h2>Go-live checklist</h2>
+      <ul class="jv-checklist">
+        <li><code>JIVO_AUTH["URL"]</code> is exactly <code>{{ facts.base }}</code>.</li>
+        <li><code>JIVO_AUTH["APP"]</code> is <code>{{ slug }}</code> and <code>python manage.py check</code> is clean.</li>
+        <li>Your server can reach <code>{{ facts.jwks_url }}</code> over HTTPS.</li>
+        <li>Your server's clock is synced (NTP): up to 10 seconds of drift is tolerated.</li>
+        <li>This service allows your frontend's origin (CORS), and your API does too if it's on another origin.</li>
+        <li>The frontend stores both tokens after every refresh, and handles 401 (refresh, then sign in) and 403 (no access).</li>
+        <li>Real users are granted <code>{{ slug }}</code>{% if perms.users.view_user %} in <a href="{% url 'admin:users_user_changelist' %}">Users</a>{% endif %}.</li>
+        <li>The API key, if used, is in your secret store.</li>
+        <li>The smoke test above passes from production.</li>
+      </ul>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="troubleshooting">
+      <h2>Troubleshooting</h2>
+      <table class="jv-table">
+        <thead><tr><th scope="col">Symptom</th><th scope="col">Likely cause</th></tr></thead>
+        <tbody>
+          <tr><td>Every request: 401 <code>Invalid token.</code></td><td><code>URL</code> doesn't match the token's issuer <code>{{ facts.issuer }}</code>, or your server can't fetch the signing keys (look for <code>Could not fetch Jivo Auth signing keys</code> in its log).</td></tr>
+          <tr><td>401 <code>Token has expired.</code> right after sign-in</td><td>The server clock is off by more than 10 seconds.</td></tr>
+          <tr><td>403 for someone who should have access</td><td>Not granted yet, or granted after their token was issued: it arrives within {{ facts.access }}, or at once after signing in again.</td></tr>
+          <tr><td>Browser: <em>blocked by CORS policy</em> on {{ facts.base }}</td><td>The frontend's origin isn't in this service's <code>CORS_ALLOWED_ORIGINS</code>. The preflight answers 200 without <code>Access-Control-Allow-Origin</code>.</td></tr>
+          <tr><td>Browser: <em>blocked by CORS policy</em> on your API</td><td>Configure <code>django-cors-headers</code> in your API.</td></tr>
+          <tr><td>Users signed out unexpectedly</td><td>The frontend doesn't store the new refresh token, or two tabs refresh with the same token more than {{ facts.grace }} seconds apart.</td></tr>
+          <tr><td><code>IsAdminUser</code> always refuses</td><td><code>JivoUser.is_staff</code> is always false: use local users or your own permission class.</td></tr>
+          <tr><td>Reset or verification email never arrives</td><td>{% if status.email_state == 'missing' %}Email isn't configured on this server yet.{% else %}Check the spam folder, and the server's email settings.{% endif %}</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    {# ------------------------------------------------------------------ #}
+    <section id="settings">
+      <h2>Settings reference</h2>
+      <p>Keys of <code>JIVO_AUTH</code> for a DRF API. Each can also be a <code>JIVO_AUTH_&lt;KEY&gt;</code> environment variable.</p>
+      <table class="jv-table">
+        <thead><tr><th scope="col">Key</th><th scope="col">Default</th><th scope="col">Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>URL</code></td><td>-</td><td><code>{{ facts.base }}</code>. Expected issuer, key location and API base.</td></tr>
+          <tr><td><code>APP</code></td><td>-</td><td>Your slug. Tokens without it in <code>apps</code> get 403.</td></tr>
+          <tr><td><code>ALLOW_ALL_USERS</code></td><td><code>False</code></td><td>Without <code>APP</code>, accept every Jivo user instead of refusing everyone.</td></tr>
+          <tr><td><code>LOCAL_USERS</code></td><td><code>False</code></td><td><code>request.user</code> is a row of your user model instead of a <code>JivoUser</code>.</td></tr>
+          <tr><td><code>LOCAL_USER_ID_FIELD</code></td><td><code>"username"</code></td><td>Field of your user model holding the Jivo user ID.</td></tr>
+          <tr><td><code>API_KEY</code></td><td>-</td><td>For <code>AuthClient().get_users()</code>.</td></tr>
+          <tr><td><code>LEEWAY</code></td><td><code>10</code></td><td>Seconds of clock drift tolerated.</td></tr>
+          <tr><td><code>TIMEOUT</code></td><td><code>5</code></td><td>Seconds to wait when fetching keys or calling this service.</td></tr>
+          <tr><td><code>PUBLIC_KEY</code></td><td>-</td><td>PEM public key used instead of fetching keys: for tests or offline servers; update it by hand if the key changes.</td></tr>
+          <tr><td><code>ISSUER</code></td><td><code>URL</code></td><td>Expected <code>iss</code>. <code>""</code> disables the check (not recommended).</td></tr>
+          <tr><td><code>JWKS_URL</code></td><td><code>URL</code> + <code>/.well-known/jwks.json</code></td><td>Where the keys are fetched from.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </article>
+</div>
+{% endblock %}

@@ -17,6 +17,7 @@ class ApplicationUserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "employee_code",
             "is_active",
         ]
 
@@ -25,6 +26,9 @@ class ApplicationUserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "id": {
                 "help_text": "User ID; the `sub` claim of the user's tokens.",
+            },
+            "employee_code": {
+                "help_text": "The person's code in Jivo's HR records; empty if not set.",
             },
             "is_active": {
                 "help_text": "Inactive users can't log in or refresh tokens.",

@@ -5,7 +5,10 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Lower
 from django.utils import timezone
 
@@ -78,6 +81,20 @@ class User(AbstractBaseUser, PermissionsMixin):
         blank=True,
     )
 
+    # Optional, unique when set; stored trimmed and uppercased.
+    employee_code = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
+        validators=[
+            RegexValidator(
+                r"^[A-Za-z0-9][A-Za-z0-9._/-]*$",
+                "Use letters and digits, optionally with . _ / or -.",
+            ),
+        ],
+        help_text="The person's code in Jivo's HR records, e.g. JIVO1234.",
+    )
+
     is_active = models.BooleanField(
         default=True,
     )
@@ -110,10 +127,44 @@ class User(AbstractBaseUser, PermissionsMixin):
                 Lower("email"),
                 name="users_user_email_ci_unique",
             ),
+            # Many users may have none; no two may share one.
+            models.UniqueConstraint(
+                fields=["employee_code"],
+                condition=~Q(employee_code=""),
+                name="users_user_employee_code_unique",
+                violation_error_code="employee_code_taken",
+                violation_error_message="Another user already has this employee code.",
+            ),
         ]
 
     def __str__(self):
         return self.email
+
+    @staticmethod
+    def normalize_employee_code(code):
+        return (code or "").strip().upper()
+
+    def clean_fields(self, exclude=None):
+        # Before the format check and the uniqueness check, so " jivo1"
+        # passes the first and collides with "JIVO1" in the second.
+        self.employee_code = self.normalize_employee_code(self.employee_code)
+
+        super().clean_fields(exclude=exclude)
+
+    def validate_constraints(self, exclude=None):
+        # A conditional constraint reports a general error; show a taken
+        # employee code on its field instead.
+        try:
+            super().validate_constraints(exclude=exclude)
+        except ValidationError as error:
+            errors = error.update_error_dict({})
+            general = errors.pop(NON_FIELD_ERRORS, [])
+
+            for item in general:
+                key = "employee_code" if item.code == "employee_code_taken" else NON_FIELD_ERRORS
+                errors.setdefault(key, []).append(item)
+
+            raise ValidationError(errors) from error
 
     def get_full_name(self):
         return f"{self.first_name} {self.last_name}".strip()
@@ -150,6 +201,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             and saved_is_active is not None
             and saved_is_active != self.is_active
         )
+
+        self.employee_code = self.normalize_employee_code(self.employee_code)
 
         super().save(*args, **kwargs)
 

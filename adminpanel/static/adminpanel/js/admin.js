@@ -181,6 +181,72 @@
         });
     }
 
+    // <select data-autosubmit> submits its form on change (the docs'
+    // application picker; a <noscript> button covers no JavaScript).
+    function initAutoSubmit() {
+        document.querySelectorAll("select[data-autosubmit]").forEach((select) => {
+            select.addEventListener("change", () => select.form.submit());
+        });
+    }
+
+    // Docs: the table of contents folds away on small screens (it sits
+    // above the article there), and marks the section being read.
+    function initDocsToc() {
+        const toc = document.querySelector("[data-docs-toc]");
+        const narrow = window.matchMedia("(max-width: 1024px)");
+
+        if (toc) {
+            toc.open = !narrow.matches;
+            // Wide screens: always open, the summary is just a title.
+            toc.querySelector("summary").addEventListener("click", (event) => {
+                if (!narrow.matches) {
+                    event.preventDefault();
+                }
+            });
+            toc.addEventListener("click", (event) => {
+                if (narrow.matches && event.target.closest("a")) {
+                    toc.open = false;
+                }
+            });
+            narrow.addEventListener("change", () => { toc.open = !narrow.matches; });
+        }
+
+        const links = [...document.querySelectorAll(".jv-docs__toc a[href^='#']")];
+        const sections = links
+            .map((link) => document.getElementById(link.hash.slice(1)))
+            .filter(Boolean);
+
+        if (!sections.length || !("IntersectionObserver" in window)) {
+            return;
+        }
+
+        const visible = new Set();
+
+        const mark = () => {
+            const current = sections.find((section) => visible.has(section)) || null;
+            links.forEach((link) => {
+                if (current && link.hash === `#${current.id}`) {
+                    link.setAttribute("aria-current", "true");
+                } else {
+                    link.removeAttribute("aria-current");
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    visible.add(entry.target);
+                } else {
+                    visible.delete(entry.target);
+                }
+            });
+            mark();
+        }, { rootMargin: "-80px 0px -55% 0px" });
+
+        sections.forEach((section) => observer.observe(section));
+    }
+
     // On small screens the filters sit above the list: fold the groups that
     // filter nothing, unless the user already opened or closed some (Django
     // keeps that choice in sessionStorage).
@@ -212,5 +278,7 @@
         initConfirmations();
         initBusyForms();
         initCopyButtons();
+        initAutoSubmit();
+        initDocsToc();
     });
 }

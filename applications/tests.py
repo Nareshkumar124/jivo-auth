@@ -151,6 +151,7 @@ class ApplicationUsersTests(ApplicationTestCase):
                 "email": "alice@jivo.in",
                 "first_name": "Alice",
                 "last_name": "",
+                "employee_code": "",
                 "is_active": True,
             },
         )
@@ -237,3 +238,16 @@ class ForwardedClientTests(ApplicationTestCase):
 
         self.assertEqual(blocked.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         self.assertEqual(other_user.status_code, status.HTTP_200_OK)
+
+
+class ApplicationUsersEmployeeCodeTests(ApplicationTestCase):
+
+    def test_lookup_includes_employee_code(self):
+        User.objects.filter(pk=self.alice.pk).update(employee_code="JIVO1")
+
+        response = self.client.get(
+            reverse("application-users"),
+            HTTP_X_JIVO_APP_KEY=self.api_key,
+        )
+
+        self.assertEqual(response.json()[0]["employee_code"], "JIVO1")

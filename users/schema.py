@@ -58,6 +58,7 @@ USER_EXAMPLE = {
     "email": "alice@example.com",
     "first_name": "Alice",
     "last_name": "Smith",
+    "employee_code": "JIVO1234",
     "is_active": True,
     "is_verified": False,
     "apps": ["oms"],
@@ -188,8 +189,8 @@ Return the profile of the authenticated user.
 Update the first and/or last name of the authenticated user. Send only the
 fields to change.
 
-`id`, `email`, `is_active`, `is_verified`, `apps` and the timestamps are
-read-only and ignored if sent.
+`id`, `email`, `employee_code`, `is_active`, `is_verified`, `apps` and the
+timestamps are read-only and ignored if sent.
 
 {AUTH_REQUIRED}
 """,
