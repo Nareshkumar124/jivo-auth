@@ -111,9 +111,8 @@ The key points:
 
 ## Install
 
-The package is in the private `Nareshkumar124/jivo-auth` repository. The
-installing machine needs read access to it, through Git credentials, an
-SSH key or a deploy key.
+The package is in the public `Nareshkumar124/jivo-auth` repository, so
+installing it needs no credentials.
 
 ```bash
 # uv
@@ -126,8 +125,8 @@ jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git@cda275f07
 ```
 
 That commit carries client **0.2.0**, the version this guide describes.
-Pin a commit or tag rather than `main`. In Docker builds, pass a
-read-only GitHub token as a build secret, or install a wheel built with
+Pin a commit or tag rather than `main`. Docker builds can install it
+straight from Git too, or from a wheel built with
 `uv build packages/jivo-auth-client`.
 
 The package installs DRF and PyJWT (with `cryptography`) if you don't
@@ -311,8 +310,13 @@ How local users behave:
 - **Blocking locally:** setting `is_active=False` blocks that user in your
   API only, with a 401 `User account is disabled.`.
 - **Custom user model:** point `LOCAL_USER_ID_FIELD` at any unique field,
-  e.g. `jivo_id = models.UUIDField(unique=True)`, or at `"id"` if your
-  primary key is a UUID that should equal the Jivo ID.
+  e.g. `auth_id = models.UUIDField(null=True, unique=True)`, or at `"id"`
+  if your primary key is a UUID that should equal the Jivo ID. New rows
+  get the email as their `username` (the Jivo ID if that's taken).
+- **An application that had its own users** keeps its user table and
+  foreign keys: import the users into Jivo Auth, store each one's Jivo ID
+  in `auth_id`, and switch. See
+  [Moving an existing application onto Jivo Auth](integrate-django.md#moving-an-existing-application-onto-jivo-auth).
 
 ## Roles and permissions
 
@@ -812,6 +816,7 @@ The `JIVO_AUTH` keys relevant to a DRF API. Each can also be set as a
 | `ALLOW_ALL_USERS` | `False` | With no `APP`, accept every Jivo user instead of refusing everyone. |
 | `LOCAL_USERS` | `False` | `request.user` is a row of your user model instead of a `JivoUser`. |
 | `LOCAL_USER_ID_FIELD` | `"username"` | Field of your user model holding the Jivo ID. |
+| `LOCAL_USER_LINK_BY_EMAIL` | `False` | (0.3.0+) A user's first token links the one local row with the same email and no Jivo ID, instead of creating a new row. For applications whose users existed before Jivo Auth. |
 | `API_KEY` | — | For `AuthClient().get_users()`. |
 | `LEEWAY` | `10` | Seconds of clock drift tolerated. |
 | `TIMEOUT` | `5` | Seconds to wait when fetching keys or calling Jivo Auth. |

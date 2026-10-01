@@ -20,7 +20,10 @@ def account_created(sender, instance, created, raw=False, **kwargs):
 
     request = current_request()
 
-    if request is None:
+    # Set by callers that know better, e.g. `manage.py import_users`.
+    if getattr(instance, "_audit_source", None):
+        source = instance._audit_source
+    elif request is None:
         source = "system"
     elif _request_actor(request) is not None:
         source = "admin"

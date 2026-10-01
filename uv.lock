@@ -363,7 +363,7 @@ dev = [
 
 [[package]]
 name = "jivo-auth-client"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "packages/jivo-auth-client" }
 dependencies = [
     { name = "django" },

@@ -9,6 +9,7 @@ all other Jivo applications trust.
 | Protect a Django REST Framework API (React, Vue or mobile frontend) | [Integrating a DRF API](integrate-drf.md), or **Docs** in the admin panel (https://auth.jivo.in/admin/docs/) for the same guide with this server's live settings |
 | Add Jivo login to a server-rendered Django site or the Django admin | [Integrating a Django application](integrate-django.md#b-server-rendered-django-site-templates-admin) |
 | Register a new application and give users access to it | [Registering an application](register-an-application.md) |
+| Move an application that already has its own users onto Jivo Auth | [Moving an existing application](integrate-django.md#moving-an-existing-application-onto-jivo-auth), or the Claude Code skill [`integrate-jivo-auth`](../skills/integrate-jivo-auth/SKILL.md) |
 | Run or configure auth.jivo.in itself | [Running auth.jivo.in](deploy-auth-service.md) |
 | Look up an endpoint | [API reference (Swagger)](https://auth.jivo.in/api/docs/) |
 

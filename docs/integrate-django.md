@@ -32,9 +32,8 @@ This guide adds Jivo login to a Django application, using the
 
 ## 1. Install the package
 
-The package lives in the private `Nareshkumar124/jivo-auth` repository. The
-machine that installs it needs read access to that repository, through
-your Git credentials, an SSH key, or a deploy key.
+The package lives in the public `Nareshkumar124/jivo-auth` repository, so
+installing it needs no credentials.
 
 With uv:
 
@@ -51,10 +50,9 @@ jivo-auth-client @ git+https://github.com/Nareshkumar124/jivo-auth.git@<commit-s
 **Pin a commit or tag** instead of tracking `main`, so a change to Jivo Auth
 never reaches your application unannounced.
 
-**Docker builds** have no Git credentials of their own. Either pass a
-read-only token as a build secret, or build a wheel beforehand
-(`uv build packages/jivo-auth-client` in the jivo-auth repository) and
-install that file.
+**Docker builds** can install it from Git as above, or from a wheel built
+beforehand (`uv build packages/jivo-auth-client` in the jivo-auth
+repository).
 
 ## 2. Configure it
 
@@ -352,26 +350,46 @@ How local records behave:
 - **Deactivating:** deactivating the record locally (`is_active=False`)
   blocks that user in your application only.
 - **Custom user model:** point `LOCAL_USER_ID_FIELD` at any unique field of
-  your model, such as a `jivo_id = models.UUIDField(unique=True)`, or at
-  `"id"` if your model's primary key is a UUID and should equal the Jivo
-  ID.
+  your model, such as an `auth_id = models.UUIDField(null=True, unique=True)`,
+  or at `"id"` if your model's primary key is a UUID and should equal the
+  Jivo ID. New rows get the email as their `username` (or the Jivo ID if
+  that's taken).
 
-**Moving an existing application onto Jivo Auth:** existing rows aren't
-matched automatically. Link them once by email, before users start logging
-in through Jivo:
+### Moving an existing application onto Jivo Auth
 
-```python
-from django.contrib.auth.models import User
-from jivo_auth.client import AuthClient
+An application that already has users keeps its user table, so every
+foreign key and all app-specific data stay as they are. It gains one
+column, `auth_id`, for the Jivo ID:
 
-jivo_ids = {u["email"]: u["id"] for u in AuthClient().get_users()}
+1. **Add the column:** `auth_id = models.UUIDField(null=True, blank=True, unique=True, editable=False)`.
+2. **Export** the users (ID, email, names, Django password hash) to JSON.
+3. **Import** them on the Jivo Auth host, with the application's slug:
 
-for user in User.objects.exclude(email=""):
-    jivo_id = jivo_ids.get(user.email.lower())
-    if jivo_id:
-        user.username = jivo_id
-        user.save(update_fields=["username"])
-```
+   ```bash
+   docker compose exec -T auth python manage.py import_users oms - --dry-run --mark-verified < users.json
+   docker compose exec -T auth python manage.py import_users oms - --mark-verified < users.json > mapping.json
+   ```
+
+   Hashes Jivo Auth can verify (PBKDF2, Argon2) are kept, so users sign in
+   with their current password. An email that already has a Jivo account is
+   linked to it, without changing that account. The output maps each
+   `source_id` to a Jivo ID, or says why it skipped the user (no valid
+   email, or an email shared by several users). It's safe to run again.
+   `--mark-verified` asserts the addresses belong to their users: without
+   it, users can't sign in until they verify their email.
+4. **Store** each mapped ID in `auth_id`.
+5. **Switch** to `LOCAL_USERS` with `"LOCAL_USER_ID_FIELD": "auth_id"`.
+   With `"LOCAL_USER_LINK_BY_EMAIL": True`, a user missed by the import is
+   linked at their first sign-in: the one local row with their (verified)
+   email and no `auth_id`.
+6. **Remove** the old sign-in, registration and password code. Later, make
+   the local passwords unusable and drop authentication-only columns and
+   tables.
+
+The `integrate-jivo-auth` Claude Code skill in this repository
+([skills/integrate-jivo-auth](../skills/integrate-jivo-auth/SKILL.md))
+walks through all of it, with the export and link commands, gates and
+checks.
 
 ### Looking users up
 
@@ -490,3 +508,4 @@ All keys go in `JIVO_AUTH` (or `JIVO_AUTH_<KEY>` environment variables).
 | `TIMEOUT` | `5` | Seconds to wait for Jivo Auth. |
 | `LOCAL_USERS` | `False` | DRF: return local `User` records instead of `JivoUser`. |
 | `LOCAL_USER_ID_FIELD` | `"username"` | Field of your user model holding the Jivo user ID. |
+| `LOCAL_USER_LINK_BY_EMAIL` | `False` | (0.3.0+) A user's first token links the one local row with the same email and no Jivo ID, instead of creating a new row. |

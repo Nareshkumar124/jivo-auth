@@ -23,7 +23,12 @@ TIMEOUT              Seconds to wait for Jivo Auth (5).
 LOCAL_USERS          If true, JivoJWTAuthentication returns a local user
                      record (created on first sight) instead of a JivoUser.
 LOCAL_USER_ID_FIELD  Field of the local user model holding the Jivo user ID
-                     ("username").
+                     ("username"), e.g. an `auth_id` UUIDField.
+LOCAL_USER_LINK_BY_EMAIL
+                     If true, a user's first token links the one local record
+                     with the same email and no Jivo ID, instead of creating
+                     a new record. For applications whose users existed
+                     before Jivo Auth (False).
 """
 
 import os
@@ -47,11 +52,12 @@ DEFAULTS = {
     "TIMEOUT": 5,
     "LOCAL_USERS": False,
     "LOCAL_USER_ID_FIELD": "username",
+    "LOCAL_USER_LINK_BY_EMAIL": False,
 }
 
 FLOAT_SETTINGS = {"LEEWAY", "TIMEOUT"}
 INT_SETTINGS = {"NUM_PROXIES"}
-BOOL_SETTINGS = {"LOCAL_USERS", "ALLOW_ALL_USERS"}
+BOOL_SETTINGS = {"LOCAL_USERS", "ALLOW_ALL_USERS", "LOCAL_USER_LINK_BY_EMAIL"}
 
 
 def unknown_settings():

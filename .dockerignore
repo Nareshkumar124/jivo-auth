@@ -14,6 +14,7 @@ htmlcov/
 
 # Not needed in the image
 docs/
+skills/
 staticfiles/
 .claude/
 packages/jivo-auth-client/tests/

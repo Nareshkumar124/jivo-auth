@@ -1,18 +1,24 @@
 import hashlib
+import io
+import json
+import os
 import re
+import tempfile
 from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core import mail
 from django.core.cache import cache
-from django.test import override_settings
+from django.core.management import CommandError, call_command
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from applications.models import Application
+from audit.models import AuditEvent
 from authentication.models import UserSession
 
 from .models import EmailVerificationToken, PasswordResetToken, User
@@ -1161,3 +1167,152 @@ class EmployeeCodeTests(UserAPITestCase):
         self.assertEqual(response.json()["employee_code"], "JIVO7")
         self.user.refresh_from_db()
         self.assertEqual(self.user.employee_code, "JIVO7")
+
+
+class ImportUsersTests(TestCase):
+    """manage.py import_users: an application's existing users, mapped to Jivo IDs."""
+
+    def setUp(self):
+        cache.clear()
+        self.oms = Application.objects.create(slug="oms", name="Jivo OMS")
+
+    def run_import(self, rows, *args, slug="oms"):
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump(rows, handle)
+        self.addCleanup(os.unlink, handle.name)
+
+        out, err = io.StringIO(), io.StringIO()
+        call_command("import_users", slug, handle.name, *args, stdout=out, stderr=err)
+
+        report = json.loads(out.getvalue())
+        return report, {str(row["source_id"]): row for row in report["users"]}, err.getvalue()
+
+    def test_creates_accounts_that_keep_their_passwords(self):
+        report, users, err = self.run_import(
+            [
+                {
+                    "source_id": 1,
+                    "email": " Alice@Jivo.in ",
+                    "first_name": "Alice",
+                    "last_name": "Smith",
+                    "password": make_password("Old-app-pass1", hasher="pbkdf2_sha256"),
+                    "employee_code": "jivo7",
+                },
+            ],
+            "--mark-verified",
+        )
+
+        self.assertEqual(report["summary"], {"created": 1, "linked": 0, "skipped": 0})
+        alice = User.objects.get(email="alice@jivo.in")
+        self.assertEqual(users["1"]["auth_id"], str(alice.id))
+        self.assertEqual(users["1"]["status"], "created")
+        self.assertTrue(alice.check_password("Old-app-pass1"))
+        self.assertTrue(alice.is_verified)
+        self.assertFalse(alice.is_staff)
+        self.assertEqual((alice.first_name, alice.employee_code), ("Alice", "JIVO7"))
+        self.assertTrue(self.oms.users.filter(pk=alice.pk).exists())
+        self.assertIn("1 created", err)
+
+        event = AuditEvent.objects.get(type=AuditEvent.Type.ACCOUNT_CREATED, user=alice)
+        self.assertEqual(event.details["source"], "import")
+        self.assertTrue(
+            AuditEvent.objects.filter(type=AuditEvent.Type.ACCESS_GRANTED, user=alice, application=self.oms).exists()
+        )
+
+    def test_the_imported_user_can_log_in(self):
+        self.run_import(
+            [{"source_id": 1, "email": "alice@jivo.in", "password": make_password("Old-app-pass1")}],
+            "--mark-verified",
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"email": "alice@jivo.in", "password": "Old-app-pass1"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content)
+
+    def test_unverifiable_hashes_and_missing_passwords(self):
+        _, users, _ = self.run_import(
+            [
+                {"source_id": 1, "email": "a@jivo.in", "password": "md5$salt$0123456789abcdef"},
+                {"source_id": 2, "email": "b@jivo.in", "password": "!unusable"},
+                {"source_id": 3, "email": "c@jivo.in"},
+                {"source_id": 4, "email": "d@jivo.in", "password": "pbkdf2_sha256$broken"},
+            ]
+        )
+
+        for source_id in "1234":
+            self.assertEqual(users[source_id]["status"], "created")
+            self.assertFalse(User.objects.get(id=users[source_id]["auth_id"]).has_usable_password())
+
+        self.assertIn("(md5) can't be verified", " ".join(users["1"]["notes"]))
+        self.assertFalse(User.objects.get(email="a@jivo.in").is_verified)
+
+    def test_links_existing_accounts_without_changing_them(self):
+        existing = User.objects.create_user(
+            email="alice@jivo.in", password="Str0ng!Pass", first_name="Alice", is_verified=True,
+        )
+
+        _, users, _ = self.run_import(
+            [{"source_id": 9, "email": "ALICE@jivo.in", "first_name": "Other", "password": make_password("x")}]
+        )
+
+        existing.refresh_from_db()
+        self.assertEqual(users["9"], {**users["9"], "status": "linked", "auth_id": str(existing.id)})
+        self.assertEqual(existing.first_name, "Alice")
+        self.assertTrue(existing.check_password("Str0ng!Pass"))
+        self.assertTrue(self.oms.users.filter(pk=existing.pk).exists())
+
+    def test_running_again_links_the_same_ids(self):
+        rows = [{"source_id": 1, "email": "alice@jivo.in"}, {"source_id": 2, "email": "bob@jivo.in"}]
+
+        _, first, _ = self.run_import(rows)
+        report, second, _ = self.run_import(rows)
+
+        self.assertEqual(report["summary"], {"created": 0, "linked": 2, "skipped": 0})
+        self.assertEqual(first["1"]["auth_id"], second["1"]["auth_id"])
+        self.assertEqual(User.objects.count(), 2)
+
+    def test_skips_what_it_cannot_map(self):
+        report, users, _ = self.run_import(
+            [
+                {"source_id": 1, "email": "not-an-email"},
+                {"source_id": 2, "email": ""},
+                {"source_id": 3, "email": "twin@jivo.in"},
+                {"source_id": 4, "email": "Twin@jivo.in"},
+                {"source_id": 5, "email": "coded@jivo.in", "employee_code": "has space"},
+            ]
+        )
+
+        self.assertEqual(report["summary"], {"created": 1, "linked": 0, "skipped": 4})
+        self.assertEqual({users[key]["status"] for key in "1234"}, {"skipped"})
+        self.assertIn("same email", users["3"]["notes"][0])
+        # A bad employee code doesn't cost the account.
+        self.assertEqual(users["5"]["status"], "created")
+        self.assertEqual(User.objects.get(email="coded@jivo.in").employee_code, "")
+        self.assertFalse(User.objects.filter(email__startswith="twin").exists())
+
+    def test_dry_run_changes_nothing(self):
+        report, users, err = self.run_import([{"source_id": 1, "email": "alice@jivo.in"}], "--dry-run")
+
+        self.assertTrue(report["dry_run"])
+        self.assertEqual(users["1"]["status"], "created")
+        self.assertFalse(User.objects.exists())
+        self.assertIn("Dry run", err)
+
+    def test_rejects_bad_input(self):
+        for rows, message in [
+            ({"source_id": 1}, "JSON list"),
+            ([{"email": "a@jivo.in"}], "no source_id"),
+            ([{"source_id": 1, "email": "a@jivo.in"}, {"source_id": "1", "email": "b@jivo.in"}], "more than once"),
+            ([{"source_id": 1, "email": "a@jivo.in", "is_staff": True}], "unknown fields: is_staff"),
+        ]:
+            with self.subTest(message), self.assertRaisesMessage(CommandError, message):
+                self.run_import(rows)
+
+        with self.assertRaisesMessage(CommandError, "No application"):
+            self.run_import([], slug="nope")
+
+        self.assertFalse(User.objects.exists())

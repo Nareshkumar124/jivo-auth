@@ -1,6 +1,6 @@
 [project]
 name = "jivo-auth-client"
-version = "0.2.0"
+version = "0.3.0"
 description = "Verify Jivo Auth tokens and log users in with Jivo Auth in Django and DRF applications"
 requires-python = ">=3.10"
 dependencies = [

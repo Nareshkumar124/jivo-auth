@@ -15,6 +15,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "rest_framework",
     "jivo_auth",
+    # Member, a user model with an auth_id column.
+    "tests",
 ]
 
 MIDDLEWARE = [

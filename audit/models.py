@@ -121,6 +121,7 @@ class AuditEvent(models.Model):
         "registration": "self-registration",
         "admin": "by an administrator",
         "system": "from the command line or a script",
+        "import": "imported from an application's user list",
     }
 
     @property

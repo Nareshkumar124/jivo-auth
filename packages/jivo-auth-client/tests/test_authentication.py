@@ -367,3 +367,88 @@ class SettingsTests(TestCase):
             self.assertEqual(conf.get("LEEWAY"), 30.0)
             self.assertEqual(conf.get("NUM_PROXIES"), 1)
             self.assertEqual(self.check_ids(), set())
+
+
+@override_settings(AUTH_USER_MODEL="tests.Member")
+@jivo_auth(LOCAL_USERS=True, LOCAL_USER_ID_FIELD="auth_id")
+class AuthIdColumnTests(ClientTestCase):
+    """An existing user model that stores the Jivo ID in its own column."""
+
+    def setUp(self):
+        super().setUp()
+
+        from .models import Member
+
+        self.Member = Member
+        self.bob = self.service.add_user("bob@jivo.in")
+
+    def test_new_users_get_distinct_usernames(self):
+        self.assertEqual(self.get(self.service.access_token(self.alice)).status_code, 200)
+        self.assertEqual(self.get(self.service.access_token(self.bob)).status_code, 200)
+
+        members = {member.email: member for member in self.Member.objects.all()}
+
+        self.assertEqual(str(members["alice@jivo.in"].auth_id), self.alice["id"])
+        self.assertEqual(members["alice@jivo.in"].username, "alice@jivo.in")
+        self.assertEqual(members["bob@jivo.in"].username, "bob@jivo.in")
+        self.assertFalse(members["bob@jivo.in"].has_usable_password())
+
+    def test_taken_username_falls_back_to_the_jivo_id(self):
+        self.Member.objects.create(username="alice@jivo.in", email="someone.else@jivo.in")
+
+        self.assertEqual(self.get(self.service.access_token(self.alice)).status_code, 200)
+
+        member = self.Member.objects.get(auth_id=self.alice["id"])
+        self.assertEqual(member.username, self.alice["id"])
+
+    def test_maps_the_existing_row_by_auth_id(self):
+        legacy = self.Member.objects.create(username="alice", email="alice@jivo.in", auth_id=self.alice["id"])
+
+        response = self.get(self.service.access_token(self.alice))
+
+        self.assertEqual(response.json()["id"], str(legacy.pk))
+        self.assertEqual(self.Member.objects.count(), 1)
+
+    def test_unlinked_row_is_left_alone_by_default(self):
+        legacy = self.Member.objects.create(username="alice", email="alice@jivo.in")
+
+        self.get(self.service.access_token(self.alice))
+
+        legacy.refresh_from_db()
+        self.assertIsNone(legacy.auth_id)
+        self.assertEqual(self.Member.objects.count(), 2)
+
+    @jivo_auth(LOCAL_USERS=True, LOCAL_USER_ID_FIELD="auth_id", LOCAL_USER_LINK_BY_EMAIL=True)
+    def test_link_by_email_claims_the_unlinked_row(self):
+        legacy = self.Member.objects.create(username="alice", email="Alice@Jivo.in")
+
+        response = self.get(self.service.access_token(self.alice))
+
+        self.assertEqual(response.json()["id"], str(legacy.pk))
+        legacy.refresh_from_db()
+        self.assertEqual(str(legacy.auth_id), self.alice["id"])
+        self.assertEqual(legacy.email, "alice@jivo.in")
+        self.assertEqual(legacy.username, "alice")
+        self.assertEqual(self.Member.objects.count(), 1)
+
+    @jivo_auth(LOCAL_USERS=True, LOCAL_USER_ID_FIELD="auth_id", LOCAL_USER_LINK_BY_EMAIL=True)
+    def test_link_by_email_never_takes_a_linked_row(self):
+        other = self.service.add_user("other@jivo.in")
+        taken = self.Member.objects.create(username="alice", email="alice@jivo.in", auth_id=other["id"])
+
+        self.get(self.service.access_token(self.alice))
+
+        taken.refresh_from_db()
+        self.assertEqual(str(taken.auth_id), other["id"])
+        self.assertTrue(self.Member.objects.filter(auth_id=self.alice["id"]).exists())
+
+    @jivo_auth(LOCAL_USERS=True, LOCAL_USER_ID_FIELD="auth_id", LOCAL_USER_LINK_BY_EMAIL=True)
+    def test_link_by_email_skips_ambiguous_rows(self):
+        self.Member.objects.create(username="alice1", email="alice@jivo.in")
+        self.Member.objects.create(username="alice2", email="alice@jivo.in")
+
+        with self.assertLogs("jivo_auth.users", "WARNING"):
+            self.get(self.service.access_token(self.alice))
+
+        self.assertEqual(self.Member.objects.filter(auth_id__isnull=True).count(), 2)
+        self.assertTrue(self.Member.objects.filter(auth_id=self.alice["id"]).exists())

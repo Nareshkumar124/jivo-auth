@@ -149,14 +149,13 @@
     <section id="install">
       <h2>Install</h2>
       <p>
-        The package lives in the private repository <code>{{ facts.repository }}</code>. The machine that
-        installs it needs read access, through Git credentials, an SSH key or a deploy key. Replace
-        <code>&lt;commit&gt;</code> with a commit or tag from that repository, so a change here never reaches your
-        application unannounced.
+        The package lives in the public repository <code>{{ facts.repository }}</code>, so installing it needs no
+        credentials. Replace <code>&lt;commit&gt;</code> with a commit or tag from that repository, so a change here
+        never reaches your application unannounced.
       </p>
       {% include "adminpanel/partials/code.html" with code=samples.install_uv label="uv" id="code-install-uv" %}
       {% include "adminpanel/partials/code.html" with code=samples.install_pip label="pip" id="code-install-pip" %}
-      <p>It installs Django REST Framework and PyJWT (with <code>cryptography</code>) if you don't have them. For Docker builds, pass a read-only GitHub token as a build secret, or install a wheel built with <code>uv build packages/jivo-auth-client</code>.</p>
+      <p>It installs Django REST Framework and PyJWT (with <code>cryptography</code>) if you don't have them. Docker builds can install it from Git too, or from a wheel built with <code>uv build packages/jivo-auth-client</code>.</p>
     </section>
 
     {# ------------------------------------------------------------------ #}
@@ -228,6 +227,18 @@
         blocks the user in your API only. The token's claims are on <code>request.user.jivo_claims</code>.
       </p>
       {% include "adminpanel/partials/code.html" with code=samples.local_users label="settings.py / models.py" id="code-local" %}
+
+      <h3>An API that already has users</h3>
+      <p>
+        Keep its user table, so foreign keys and app data stay as they are, and add an
+        <code>auth_id = models.UUIDField(null=True, blank=True, unique=True, editable=False)</code> column. Export the
+        users (ID, email, names, password hash) to JSON, then on this server run
+        <code>manage.py import_users {{ slug }} users.json &gt; mapping.json</code>, with <code>--dry-run</code> first.
+        Verifiable password hashes are kept, emails that already have a Jivo account are linked to it, and the output maps
+        each <code>source_id</code> to a Jivo ID. Store those in <code>auth_id</code>, then set
+        <code>"LOCAL_USER_ID_FIELD": "auth_id"</code> and <code>"LOCAL_USER_LINK_BY_EMAIL": True</code>. The
+        <code>integrate-jivo-auth</code> Claude Code skill in the repository walks through every step.
+      </p>
     </section>
 
     {# ------------------------------------------------------------------ #}
@@ -401,7 +412,8 @@
           <tr><td><code>APP</code></td><td>-</td><td>Your slug. Tokens without it in <code>apps</code> get 403.</td></tr>
           <tr><td><code>ALLOW_ALL_USERS</code></td><td><code>False</code></td><td>Without <code>APP</code>, accept every Jivo user instead of refusing everyone.</td></tr>
           <tr><td><code>LOCAL_USERS</code></td><td><code>False</code></td><td><code>request.user</code> is a row of your user model instead of a <code>JivoUser</code>.</td></tr>
-          <tr><td><code>LOCAL_USER_ID_FIELD</code></td><td><code>"username"</code></td><td>Field of your user model holding the Jivo user ID.</td></tr>
+          <tr><td><code>LOCAL_USER_ID_FIELD</code></td><td><code>"username"</code></td><td>Field of your user model holding the Jivo user ID, e.g. <code>"auth_id"</code>.</td></tr>
+          <tr><td><code>LOCAL_USER_LINK_BY_EMAIL</code></td><td><code>False</code></td><td>A user's first token links the one local row with the same email and no Jivo ID, instead of creating one. For applications whose users existed before Jivo Auth.</td></tr>
           <tr><td><code>API_KEY</code></td><td>-</td><td>For <code>AuthClient().get_users()</code>.</td></tr>
           <tr><td><code>LEEWAY</code></td><td><code>10</code></td><td>Seconds of clock drift tolerated.</td></tr>
           <tr><td><code>TIMEOUT</code></td><td><code>5</code></td><td>Seconds to wait when fetching keys or calling this service.</td></tr>
