@@ -12,37 +12,24 @@ pg_dump -Fc -f app-before-jivo-cleanup-$(date +%F).dump <db>
 Before starting, check that:
 
 - `auth_id` is set for every active user who signs in, or each exception is known;
-- no code reads the fields or tables below (search again: the analysis may be weeks old).
+- no code reads the fields or tables below (search again: the analysis may be weeks old);
+- **nothing still signs people in the old way against this database.** Shared test and staging databases are often used by another deployment of the app that hasn't switched. Making passwords unusable would lock its users out, and dropping the token tables would break its login outright. Check the database's clients (`pg_stat_activity`) and that no old tokens were issued since the switch (e.g. `SELECT max(created_at) FROM token_blacklist_outstandingtoken`). If something still does, prepare the release (below) and wait;
+- the mobile apps sign in with Jivo Auth, if the release removes a 410 stub.
+
+**Prepare now, apply later.** When cleanup can't run yet, write it anyway,
+but keep **every** cleanup change out of the code that gets deployed until
+the cleanup release. That means the password migration, model fields
+removed (a dropped column breaks every query of an old deployment on the
+same database), `DeleteModel` migrations, and the `migrate <app> zero`
+steps. A migration file in `migrations/` runs on the next `migrate`
+anywhere. Either keep the release on an unmerged branch, or stage its files
+with a runbook, e.g. in `docs/jivo-auth-cleanup/`, and test the staged
+password migration from the suite. Don't run `makemigrations` for cleanup
+before then; it would also fail `makemigrations --check` in CI.
 
 ## 1. Make local passwords unusable
 
-The `password` column stays, because Django's sessions and admin need it. Its values go. Use a data migration in the user model's app, so every environment gets the same change:
-
-```python
-from django.contrib.auth.hashers import make_password
-from django.db import migrations
-
-USERNAME_FIELD = "username"   # historical models don't carry USERNAME_FIELD
-BREAK_GLASS_USERNAMES = []    # decision D7: the same names as in settings, if any
-
-
-def disable_local_passwords(apps, schema_editor):
-    User = apps.get_model("<app_label>", "<UserModel>")
-    users = User.objects.exclude(**{f"{USERNAME_FIELD}__in": BREAK_GLASS_USERNAMES}).exclude(password__startswith="!")
-    batch = []
-    for user in users.only("pk").iterator():
-        user.password = make_password(None)   # a different random unusable value per row
-        batch.append(user)
-        if len(batch) == 1000:
-            User.objects.bulk_update(batch, ["password"])
-            batch = []
-    User.objects.bulk_update(batch, ["password"])
-
-
-class Migration(migrations.Migration):
-    dependencies = [("<app_label>", "<previous migration>")]
-    operations = [migrations.RunPython(disable_local_passwords, migrations.RunPython.noop)]
-```
+The `password` column stays, because Django's sessions and admin need it. Its values go. Use a data migration in the user model's app, so every environment gets the same change: [templates/disable_local_passwords.py](../templates/disable_local_passwords.py). Set its app label, model, `USERNAME_FIELD` (e.g. `"email"` for models that sign in by email) and `BREAK_GLASS_USERNAMES` (decision D7). [templates/test_jivo_cleanup.py](../templates/test_jivo_cleanup.py) tests the staged file from the app's suite: every password becomes unusable, each row gets its own value, rows already unusable and break-glass accounts are left alone, nothing else changes, and the file isn't in `migrations/` yet (drop that one test in the cleanup release).
 
 It's irreversible: the old hashes only survive in the backup, which is why the backup comes first.
 

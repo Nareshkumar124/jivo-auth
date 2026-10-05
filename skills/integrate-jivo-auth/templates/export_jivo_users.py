@@ -3,11 +3,18 @@ Export this application's users for Jivo Auth's `manage.py import_users`.
 
     python manage.py export_jivo_users /secure/tmp/users.json
     python manage.py export_jivo_users /secure/tmp/users.json --include-inactive
+    python manage.py export_jivo_users /secure/tmp/users.json --without-password 12,40
 
 Only users without an auth_id are exported, so running it again picks up
 just the ones still to migrate. The file contains password hashes: it's
 written with mode 600, never inside the project, and should be deleted
 once the import is verified.
+
+--without-password leaves the hash out for the listed primary keys, so those
+accounts are created in Jivo Auth with no password (an administrator sets
+one). Use it for accounts whose local password must not become a Jivo
+credential, e.g. one still set to a default committed in the repository by
+a seed or "create superuser" command (decision D1).
 """
 
 import json
@@ -20,6 +27,9 @@ from django.core.management.base import BaseCommand, CommandError
 
 
 # Adapt to the user model: model field for each exported value, or None.
+# A model with one name field instead of first/last (e.g. `name`) maps
+# first_name to it and last_name to None; Jivo Auth then holds the whole name
+# as first_name. (sync_jivo_users has NAME_FIELD for the way back.)
 FIELDS = {
     "email": "email",
     "first_name": "first_name",
@@ -36,9 +46,16 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("path", help="Output file, outside the project directory.")
         parser.add_argument("--include-inactive", action="store_true", help="Also export inactive users.")
+        parser.add_argument(
+            "--without-password",
+            default="",
+            metavar="PK,PK",
+            help="Primary keys whose password hash is left out (created in Jivo Auth with no password).",
+        )
 
-    def handle(self, *args, path, include_inactive, **options):
+    def handle(self, *args, path, include_inactive, without_password, **options):
         output = Path(path).resolve()
+        no_password = {item.strip() for item in without_password.split(",") if item.strip()}
 
         if output.is_relative_to(Path(settings.BASE_DIR).resolve()):
             raise CommandError("Write the export outside the project: it contains password hashes.")
@@ -64,7 +81,7 @@ class Command(BaseCommand):
             row = {
                 "source_id": user.pk,
                 "email": email,
-                "password": user.password or None,
+                "password": None if str(user.pk) in no_password else (user.password or None),
                 "is_active": bool(getattr(user, "is_active", True)),
             }
 
@@ -73,6 +90,15 @@ class Command(BaseCommand):
                     row[key] = getattr(user, FIELDS[key]) or ""
 
             rows.append(row)
+
+        # A key that matched no exported row (a typo, or a user who is linked,
+        # inactive or has no email) would let that password through unnoticed.
+        missing = no_password - {str(row["source_id"]) for row in rows}
+
+        if missing:
+            raise CommandError(
+                f"--without-password: no exported user has primary key {', '.join(sorted(missing))}. Nothing written."
+            )
 
         try:
             # O_EXCL: never overwrite; 0o600: owner-only, it holds password hashes.
@@ -97,6 +123,9 @@ class Command(BaseCommand):
 
         for user in without_email:
             self.stderr.write(f"  no email: pk={user.pk} {user.get_username()}")
+
+        if no_password:
+            self.stderr.write(f"  exported without a password: pk={', '.join(sorted(no_password))}")
 
         for email, ids in shared.items():
             self.stderr.write(f"  same email, import_users will skip all of them: {email} pk={ids}")

@@ -30,6 +30,18 @@ FIELDS = {
 
 ID_FIELD = "auth_id"
 
+# For a model with ONE name field instead of first/last (e.g. `name`): set
+# FIELDS["first_name"] and FIELDS["last_name"] to None and name the field
+# here. It gets Jivo's first and last name joined, and a Jivo account with no
+# name never blanks it.
+NAME_FIELD = None
+
+
+def full_name(jivo):
+    """Jivo's first and last name joined, or None when both are blank."""
+    parts = (jivo.get("first_name"), jivo.get("last_name"))
+    return " ".join(part.strip() for part in parts if part and part.strip()) or None
+
 
 class Command(BaseCommand):
     help = "Refresh local user records from Jivo Auth."
@@ -50,7 +62,8 @@ class Command(BaseCommand):
 
         User = get_user_model()
         local = {str(getattr(user, ID_FIELD)): user for user in User.objects.filter(**{f"{ID_FIELD}__isnull": False})}
-        counts = {"updated": 0, "added locally": 0, "unchanged": 0, "not local yet": 0}
+        counts = {"updated": 0, "added locally": 0, "linked by email": 0, "unchanged": 0, "not local yet": 0}
+        email_field = User.get_email_field_name()
 
         with transaction.atomic():
             for jivo in jivo_users:
@@ -62,18 +75,30 @@ class Command(BaseCommand):
                         continue
 
                     # Creates the row, or links an unlinked one by email when
-                    # LOCAL_USER_LINK_BY_EMAIL is on.
+                    # LOCAL_USER_LINK_BY_EMAIL is on. A link claims an existing
+                    # row (often an inactive user the import skipped), so it is
+                    # reported as such: review those.
+                    candidate = User.objects.filter(
+                        **{f"{ID_FIELD}__isnull": True, f"{email_field}__iexact": jivo["email"]}
+                    ).first()
                     user = get_local_user({"sub": jivo["id"], "email": jivo["email"]})
-                    counts["added locally"] += 1
-                    self.stderr.write(f"  added locally: {jivo['email']} (pk={user.pk})")
+                    kind = "linked by email" if candidate and candidate.pk == user.pk else "added locally"
+                    counts[kind] += 1
+                    self.stderr.write(f"  {kind}: {jivo['email']} (pk={user.pk}, active={user.is_active})")
+
+                fields = dict(FIELDS)
+
+                if NAME_FIELD:
+                    jivo = {**jivo, "_full_name": full_name(jivo)}
+                    fields["_full_name"] = NAME_FIELD
 
                 changed = [
                     field
-                    for key, field in FIELDS.items()
+                    for key, field in fields.items()
                     if field and jivo.get(key) is not None and getattr(user, field) != jivo[key]
                 ]
 
-                for key, field in FIELDS.items():
+                for key, field in fields.items():
                     if field in changed:
                         setattr(user, field, jivo[key])
 
