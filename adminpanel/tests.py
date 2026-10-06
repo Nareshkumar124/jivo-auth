@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, Permission
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -374,6 +374,185 @@ class ApplicationAdminTests(AdminTestCase):
 
         self.assertIn("slug", page.context["adminform"].readonly_fields)
         self.assertContains(page, "Create API key")
+
+
+class ApplicationAccessTests(AdminTestCase):
+    """The "Users with access" list (adminpanel/widgets.py)."""
+
+    def setUp(self):
+        super().setUp()
+
+        self.bob = User.objects.create_user(
+            email="bob@jivo.in",
+            password=PASSWORD,
+            first_name="Bob",
+            last_name="Builder",
+            employee_code="e-7",
+            is_verified=True,
+        )
+        self.carol = User.objects.create_user(email="carol@jivo.in", password=PASSWORD)
+
+    def change_url(self):
+        return reverse("admin:applications_application_change", args=[self.oms.pk])
+
+    def save(self, users=(), emails=""):
+        return self.client.post(
+            self.change_url(),
+            {
+                "name": self.oms.name,
+                "is_active": "on",
+                "users": [str(user.pk) for user in users],
+                "users_emails": emails,
+                "_save": "Save",
+            },
+        )
+
+    def members(self):
+        return set(self.oms.users.all())
+
+    def test_lists_members_only_with_their_details(self):
+        self.oms.users.add(self.bob)
+        self.client.force_login(self.superuser)
+
+        page = self.client.get(self.change_url())
+
+        self.assertContains(page, "data-jv-access")
+        self.assertContains(page, f'name="users" value="{self.bob.pk}" checked', html=False)
+        self.assertContains(page, "Bob Builder")
+        self.assertContains(page, "E-7")
+        self.assertContains(page, "<strong data-count>1</strong> <span data-count-noun>person has</span>", html=False)
+        # Not a <select> with an option for every account.
+        self.assertNotContains(page, "carol@jivo.in")
+        self.assertNotContains(page, '<select name="users"')
+
+    def test_flags_members_who_cannot_sign_in(self):
+        self.carol.is_active = False
+        self.carol.save()
+        self.oms.users.add(self.alice, self.carol)
+
+        unverified = User.objects.create_user(email="dan@jivo.in", password=PASSWORD)
+        self.oms.users.add(unverified)
+        self.client.force_login(self.superuser)
+
+        page = self.client.get(self.change_url())
+
+        self.assertContains(page, "Inactive")
+        self.assertContains(page, "Email not verified")
+
+    def test_unticking_removes_access_and_is_audited(self):
+        self.oms.users.add(self.alice, self.bob)
+        self.client.force_login(self.superuser)
+
+        response = self.save(users=[self.bob])
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.members(), {self.bob})
+        self.assertTrue(
+            AuditEvent.objects.filter(type=AuditEvent.Type.ACCESS_REVOKED, user=self.alice).exists()
+        )
+
+    def test_pasted_emails_add_access(self):
+        self.oms.users.add(self.alice)
+        self.client.force_login(self.superuser)
+
+        response = self.save(users=[self.alice], emails="BOB@jivo.in,\n carol@jivo.in; bob@jivo.in")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.members(), {self.alice, self.bob, self.carol})
+        self.assertEqual(
+            AuditEvent.objects.filter(type=AuditEvent.Type.ACCESS_GRANTED).count(),
+            3,
+        )
+
+    def test_unknown_email_keeps_the_form_and_shows_the_pending_changes(self):
+        self.oms.users.add(self.alice)
+        self.client.force_login(self.superuser)
+
+        page = self.save(users=[self.bob], emails="nobody@jivo.in")
+
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "No account has the email nobody@jivo.in.")
+        self.assertContains(page, ">nobody@jivo.in</textarea>", html=False)
+        self.assertEqual(self.members(), {self.alice})
+
+        rows = page.content.decode()
+        self.assertRegex(rows, rf'is-removed[^>]*data-id="{self.alice.pk}"')
+        self.assertRegex(rows, rf'is-added[^>]*data-id="{self.bob.pk}"')
+        self.assertContains(page, f'name="users" value="{self.alice.pk}">', html=False)
+
+    def test_malformed_email_is_an_error(self):
+        self.client.force_login(self.superuser)
+
+        page = self.save(emails="alice@jivo.in, not-an-email")
+
+        self.assertEqual(
+            page.context["adminform"].form.errors["users"],
+            ["These aren't email addresses: not-an-email."],
+        )
+        self.assertEqual(self.members(), set())
+
+    def test_view_only_staff_get_a_read_only_list(self):
+        self.oms.users.add(self.bob)
+        self.client.force_login(staff("auditor@jivo.in", role="Auditor"))
+
+        page = self.client.get(self.change_url())
+
+        self.assertContains(page, "jv-access--readonly")
+        self.assertContains(page, "Bob Builder")
+        self.assertNotContains(page, 'name="users"')
+        self.assertNotContains(page, "users_emails")
+
+    def test_adding_needs_permission_to_view_users(self):
+        group = Group.objects.create(name="Apps only")
+        group.permissions.add(
+            *Permission.objects.filter(
+                content_type__app_label="applications",
+                codename__in=["view_application", "change_application"],
+            )
+        )
+        manager = staff("apps@jivo.in")
+        manager.groups.add(group)
+        self.oms.users.add(self.alice)
+        self.client.force_login(manager)
+
+        page = self.client.get(self.change_url())
+
+        self.assertContains(page, "To add people you need permission to view users.")
+        self.assertNotContains(page, "data-search-url")
+        self.assertNotContains(page, "users_emails")
+
+        # A pasted list is ignored rather than used to probe for accounts.
+        self.save(users=[self.alice], emails="bob@jivo.in")
+
+        self.assertEqual(self.members(), {self.alice})
+
+    def test_search_returns_what_the_picker_shows(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(
+            reverse("admin:autocomplete"),
+            {
+                "app_label": "applications",
+                "model_name": "application",
+                "field_name": "users",
+                "term": "builder",
+            },
+        )
+
+        self.assertEqual(
+            response.json()["results"],
+            [
+                {
+                    "id": str(self.bob.pk),
+                    "text": "bob@jivo.in",
+                    "name": "Bob Builder",
+                    "email": "bob@jivo.in",
+                    "employee_code": "E-7",
+                    "is_active": True,
+                    "is_verified": True,
+                }
+            ],
+        )
 
 
 class SessionAdminTests(AdminTestCase):

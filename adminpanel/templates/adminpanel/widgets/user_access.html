@@ -1,0 +1,71 @@
+{% load adminpanel %}
+{# UserAccessWidget (adminpanel/widgets.py). Works as-is: checkboxes remove, the emails box adds. admin.js adds search, Remove/Undo, filtering and the unsaved-changes summary. #}
+{% with w=widget %}
+<div class="jv-access{% if w.read_only %} jv-access--readonly{% endif %}" data-jv-access data-name="{{ w.name }}"{% if not w.read_only and w.can_add and w.search_url %} data-search-url="{{ w.search_url }}"{% endif %} data-show-verification="{{ w.show_verification|yesno:'true,false' }}">
+
+  <div class="jv-access__head">
+    <p class="jv-access__summary" aria-live="polite">
+      <span class="jv-access__count">{% icon "users" 16 %}<span><strong data-count>{{ w.count }}</strong> <span data-count-noun>{{ w.count|pluralize:"person has,people have" }}</span> access</span></span>
+      <span class="jv-access__pending" data-pending hidden>
+        <span data-pending-text></span>
+        <button type="button" class="jv-access__undo-all" data-undo-all>Undo changes</button>
+      </span>
+    </p>
+
+    {% if not w.read_only and w.can_add %}
+    <div class="jv-access__picker" data-picker hidden>
+      {% icon "user-plus" 17 %}
+      <input id="{{ w.attrs.id }}" type="search" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="{{ w.attrs.id }}_results" aria-label="Add people by name, email or employee code" placeholder="Add people by name, email or employee code" autocomplete="off" spellcheck="false" data-search>
+      <ul id="{{ w.attrs.id }}_results" class="jv-access__results" role="listbox" aria-label="Matching accounts" hidden data-results></ul>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="jv-access__filter" data-filter-row hidden>
+    {% icon "search" 15 %}
+    <input type="search" placeholder="Filter by name, email or employee code" aria-label="Filter people with access" autocomplete="off" spellcheck="false" data-filter>
+    <span class="jv-access__shown" data-shown></span>
+  </div>
+
+  <ul class="jv-access__list" data-list>
+    {% for member in w.members %}
+    <li class="jv-access__row is-{{ member.state }}{% if not member.is_active %} is-inactive{% endif %}" data-id="{{ member.id }}" data-state="{{ member.state }}" data-terms="{{ member.search }}">
+      {% if w.read_only %}<div class="jv-access__person">{% else %}<label class="jv-access__person">
+        <input type="checkbox" class="jv-access__check" name="{{ w.name }}" value="{{ member.id }}"{% if member.checked %} checked{% endif %}>{% endif %}
+        <span class="jv-avatar" aria-hidden="true">{{ member.initials }}</span>
+        <span class="jv-access__identity">
+          <span class="jv-access__name">{{ member.name|default:member.email }}</span>
+          {% if member.name %}<span class="jv-access__email">{{ member.email }}</span>{% endif %}
+        </span>
+      {% if w.read_only %}</div>{% else %}</label>{% endif %}
+      <span class="jv-access__tags">
+        {% if member.employee_code %}<code class="jv-access__code" title="Employee code">{{ member.employee_code }}</code>{% endif %}
+        {% if not member.is_active %}<span class="jv-badge jv-badge--neutral" title="Can't sign in until the account is reactivated">Inactive</span>{% elif w.show_verification and not member.is_verified %}<span class="jv-badge jv-badge--warning" title="Can't sign in until they verify their email">Email not verified</span>{% endif %}
+        <span class="jv-badge jv-badge--good jv-access__flag jv-access__flag--added">Will be added</span>
+        <span class="jv-badge jv-badge--critical jv-access__flag jv-access__flag--removed">Will be removed</span>
+      </span>
+      {% if not w.read_only %}<button type="button" class="jv-access__toggle" data-toggle hidden></button>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="jv-access__empty" data-empty{% if w.members %} hidden{% endif %}>
+    <span class="jv-empty__icon">{% icon "users" 22 %}</span>
+    <p>No one has access yet.{% if not w.read_only and w.can_add %} Search above, or paste emails below, to add people.{% endif %}</p>
+  </div>
+
+  <p class="jv-access__nomatch" data-nomatch hidden>No one in this list matches “<span data-nomatch-term></span>”.</p>
+
+  {% if not w.read_only %}
+    {% if w.can_add %}
+    <details class="jv-access__bulk"{% if w.emails %} open{% endif %}>
+      <summary>{% icon "mail" 15 %} Add several people by email</summary>
+      <textarea name="{{ w.name }}_emails" rows="4" placeholder="ana@jivo.in, ravi@jivo.in&#10;or one email per line" aria-label="Emails of people to add" spellcheck="false">{{ w.emails }}</textarea>
+      <p class="help">Each email must belong to an existing account. They're added when you save.</p>
+    </details>
+    {% else %}
+    <p class="help">To add people you need permission to view users.</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endwith %}

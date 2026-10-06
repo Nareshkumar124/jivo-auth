@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.contrib import admin
+from django.contrib.admin.views.autocomplete import AutocompleteJsonView
+from django.contrib.auth import get_user_model
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
@@ -99,6 +101,24 @@ def build_nav(request, available_apps):
     return sections
 
 
+class JivoAutocompleteJsonView(AutocompleteJsonView):
+    """Adds what the users-with-access picker shows about each account."""
+
+    def serialize_result(self, obj, to_field_name):
+        result = super().serialize_result(obj, to_field_name)
+
+        if isinstance(obj, get_user_model()):
+            result.update(
+                name=obj.get_full_name(),
+                email=obj.email,
+                employee_code=obj.employee_code or "",
+                is_active=obj.is_active,
+                is_verified=obj.is_verified,
+            )
+
+        return result
+
+
 class JivoAdminSite(admin.AdminSite):
 
     site_header = "Jivo Auth"
@@ -113,6 +133,9 @@ class JivoAdminSite(admin.AdminSite):
             path("docs/", self.admin_view(self.docs), name="docs"),
             *super().get_urls(),
         ]
+
+    def autocomplete_view(self, request):
+        return JivoAutocompleteJsonView.as_view(admin_site=self)(request)
 
     def docs(self, request):
         return TemplateResponse(

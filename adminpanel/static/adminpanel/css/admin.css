@@ -1520,6 +1520,560 @@ ul.errorlist li,
     display: block;
 }
 
+/* Users with access (adminpanel/widgets.py; behaviour in admin.js). Class
+   pairs such as `.jv-access .jv-access__person` outweigh Django's
+   `.aligned ul label` and `.module ul` rules. */
+
+.form-row:has(.jv-access) {
+    overflow: visible;           /* Django hides overflow: it would clip the search results. */
+}
+
+.form-row:has(.jv-access) > div,
+.form-row:has(.jv-access) .flex-container {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* The fieldset title already names the field. */
+.form-row:has(.jv-access) .flex-container > label {
+    display: none;
+}
+
+.jv-access {
+    box-sizing: border-box;
+    align-self: stretch;
+    width: 100%;
+    max-width: 940px;
+    min-width: 0;
+    border: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius);
+    background: var(--jv-surface);
+    box-shadow: var(--jv-shadow);
+}
+
+.jv-access__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius) var(--jv-radius) 0 0;
+    background: var(--jv-surface-2);
+}
+
+.jv-access .jv-access__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin: 0;
+    padding: 0;
+    color: var(--jv-text-2);
+    font-size: 13.5px;
+}
+
+.jv-access__count {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.jv-access__count .jv-icon {
+    color: var(--jv-text-3);
+}
+
+.jv-access__count strong {
+    color: var(--jv-text);
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+}
+
+.jv-access__pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 4px 2px 10px;
+    border-radius: 999px;
+    background: var(--jv-warning-soft);
+    color: var(--jv-warning);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.jv-access__pending[hidden] {
+    display: none;
+}
+
+.jv-access__undo-all {
+    padding: 3px 8px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+.jv-access__undo-all:hover {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+/* Search to add */
+
+.jv-access__picker {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1 1 320px;
+    max-width: 440px;
+}
+
+.jv-access__picker[hidden] {
+    display: none;
+}
+
+.jv-access__picker > .jv-icon,
+.jv-access__filter > .jv-icon {
+    position: absolute;
+    left: 11px;
+    color: var(--jv-text-3);
+    pointer-events: none;
+}
+
+.jv-access .jv-access__picker input {
+    width: 100%;
+    min-height: 38px;
+    padding-left: 36px;
+    box-sizing: border-box;
+}
+
+.jv-access .jv-access__results {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    max-height: 340px;
+    margin: 0;
+    padding: 6px;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--jv-border);
+    border-radius: var(--jv-radius-sm);
+    background: var(--jv-surface);
+    box-shadow: var(--jv-shadow-lg);
+}
+
+.jv-access .jv-access__results[hidden] {
+    display: none;
+}
+
+.jv-access .jv-access__result {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    list-style: none;
+    cursor: pointer;
+}
+
+.jv-access__result.is-active,
+.jv-access__result:hover {
+    background: var(--jv-accent-soft);
+}
+
+.jv-access__result[aria-disabled="true"] {
+    cursor: default;
+}
+
+.jv-access__result[aria-disabled="true"] .jv-avatar,
+.jv-access__result[aria-disabled="true"] .jv-access__identity {
+    opacity: 0.6;
+}
+
+.jv-access__result[aria-disabled="true"].is-active,
+.jv-access__result[aria-disabled="true"]:hover {
+    background: var(--jv-hover-wash);
+}
+
+.jv-access__result .jv-access__tags {
+    margin-left: auto;
+}
+
+.jv-access__result-note {
+    color: var(--jv-text-3);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.jv-access .jv-access__result-status {
+    padding: 8px 10px;
+    color: var(--jv-text-3);
+    font-size: 13px;
+    list-style: none;
+}
+
+/* Filter the list */
+
+.jv-access__filter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--jv-border);
+}
+
+.jv-access__filter[hidden] {
+    display: none;
+}
+
+.jv-access__filter > .jv-icon {
+    left: 25px;
+}
+
+.jv-access .jv-access__filter input {
+    flex: 1 1 auto;
+    max-width: 380px;
+    padding-left: 34px;
+}
+
+.jv-access__shown {
+    color: var(--jv-text-3);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Members */
+
+.jv-access .jv-access__list {
+    max-height: 480px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.jv-access .jv-access__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--jv-border);
+    list-style: none;
+    transition: background-color 0.2s;
+}
+
+.jv-access .jv-access__row:last-child {
+    border-bottom: 0;
+}
+
+.jv-access__row[hidden] {
+    display: none;
+}
+
+.jv-access__row:hover {
+    background: var(--jv-hover-wash);
+}
+
+.jv-access .jv-access__person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    color: var(--jv-text);
+    font-size: 14px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.jv-access--readonly .jv-access__person,
+.jv-access--enhanced .jv-access__person {
+    cursor: default;
+}
+
+.jv-access .jv-access__check {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+/* With admin.js the checkboxes stay in the form, driven by Remove/Undo. */
+.jv-access--enhanced .jv-access__check {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.jv-avatar {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--jv-accent-soft);
+    color: var(--jv-accent-text);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.jv-access__identity {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.35;
+}
+
+.jv-access__name,
+.jv-access__email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jv-access__name {
+    color: var(--jv-text);
+    font-weight: 600;
+}
+
+.jv-access__email {
+    color: var(--jv-text-3);
+    font-size: 12.5px;
+}
+
+.jv-access__tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.jv-access__code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: var(--jv-surface-3);
+    color: var(--jv-text-2);
+    font: 12px/1.6 var(--jv-mono);
+}
+
+.jv-access__flag {
+    display: none;
+}
+
+.jv-access__row.is-added .jv-access__flag--added,
+.jv-access__row.is-removed .jv-access__flag--removed {
+    display: inline-flex;
+}
+
+.jv-access .jv-access__row.is-added {
+    background: color-mix(in srgb, var(--jv-good-soft) 70%, transparent);
+}
+
+.jv-access .jv-access__row.is-removed {
+    background: color-mix(in srgb, var(--jv-critical-soft) 60%, transparent);
+}
+
+.jv-access__row.is-removed .jv-access__name,
+.jv-access__row.is-removed .jv-access__email {
+    color: var(--jv-text-3);
+    text-decoration: line-through;
+}
+
+.jv-access__row.is-removed .jv-avatar,
+.jv-access__row.is-inactive .jv-avatar {
+    background: var(--jv-neutral-soft);
+    color: var(--jv-neutral);
+}
+
+.jv-access__row.is-flash {
+    animation: jv-access-flash 1.4s ease-out;
+}
+
+@keyframes jv-access-flash {
+    from {
+        box-shadow: inset 3px 0 0 var(--jv-accent);
+        background: var(--jv-accent-soft);
+    }
+    to {
+        box-shadow: inset 3px 0 0 transparent;
+    }
+}
+
+.jv-access__toggle {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: var(--jv-radius-sm);
+    background: transparent;
+    color: var(--jv-text-2);
+    font: 600 12.5px/1 var(--jv-font);
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.jv-access__toggle[hidden] {
+    display: none;
+}
+
+.jv-access__toggle:hover {
+    border-color: color-mix(in srgb, var(--jv-critical) 30%, transparent);
+    background: var(--jv-critical-soft);
+    color: var(--jv-critical);
+}
+
+.jv-access__toggle.is-undo {
+    color: var(--jv-accent-text);
+}
+
+.jv-access__toggle.is-undo:hover {
+    border-color: color-mix(in srgb, var(--jv-accent) 35%, transparent);
+    background: var(--jv-accent-soft);
+    color: var(--jv-accent-text);
+}
+
+.jv-access__empty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px;
+    color: var(--jv-text-3);
+}
+
+.jv-access__empty[hidden] {
+    display: none;
+}
+
+.jv-access .jv-access__empty p,
+.jv-access .jv-access__nomatch {
+    margin: 0;
+    padding: 0;
+    font-size: 13.5px;
+}
+
+.jv-access .jv-access__nomatch {
+    padding: 16px;
+    color: var(--jv-text-3);
+}
+
+.jv-access__nomatch[hidden] {
+    display: none;
+}
+
+/* Add several by email */
+
+.jv-access__bulk {
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--jv-border);
+}
+
+.jv-access__bulk summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 0;
+    color: var(--jv-accent-text);
+    font-size: 13px;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+
+.jv-access__bulk summary::-webkit-details-marker {
+    display: none;
+}
+
+.jv-access .jv-access__bulk textarea {
+    display: block;
+    width: 100%;
+    max-width: 600px;
+    margin-top: 8px;
+    box-sizing: border-box;
+    font: 13px/1.5 var(--jv-mono);
+}
+
+.jv-access .help {
+    margin: 6px 0 0;
+    padding: 0;
+}
+
+.jv-access > .help {
+    padding: 0 14px 12px;
+}
+
+@media (max-width: 640px) {
+    .jv-access__head,
+    .jv-access__filter,
+    .jv-access .jv-access__row,
+    .jv-access__bulk {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .jv-access__filter > .jv-icon {
+        left: 23px;
+    }
+
+    .jv-access__picker {
+        max-width: none;
+        flex-basis: 100%;
+    }
+
+    /* Name and button on one line, tags under the name. */
+    .jv-access .jv-access__row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas:
+            "person toggle"
+            "tags tags";
+        column-gap: 8px;
+    }
+
+    .jv-access .jv-access__person {
+        grid-area: person;
+    }
+
+    .jv-access__toggle {
+        grid-area: toggle;
+    }
+
+    .jv-access__tags {
+        grid-area: tags;
+        justify-content: flex-start;
+        padding-left: 44px;
+    }
+
+    /* Spacing only for tags that show, so rows without any stay one line. */
+    .jv-access__tags > * {
+        margin-top: 6px;
+    }
+
+    .jv-access__result .jv-access__tags {
+        display: none;
+    }
+}
+
 /* Password: a status line instead of the raw hash parameters. */
 .jv-password {
     display: flex;

@@ -1,4 +1,8 @@
+from urllib.parse import urlencode
+
+from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import HttpResponseNotAllowed
@@ -8,6 +12,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 
 from adminpanel.admin_tools import badge, confirm_action, relative_time, titled
+from adminpanel.widgets import UserAccessField, UserAccessWidget, render_access_list
 
 from .models import Application
 
@@ -52,10 +57,6 @@ class ApplicationAdmin(admin.ModelAdmin):
         "name",
     ]
 
-    autocomplete_fields = [
-        "users",
-    ]
-
     readonly_fields = [
         "api_key_status",
         "created_at",
@@ -68,8 +69,9 @@ class ApplicationAdmin(admin.ModelAdmin):
             {
                 "fields": ["users"],
                 "description": (
-                    "Changes reach users' tokens on their next refresh "
-                    "(within 15 minutes)."
+                    "People listed here can sign in to this application. "
+                    "Changes reach their tokens on the next refresh (within "
+                    f"{int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds() // 60)} minutes)."
                 ),
             },
         ),
@@ -84,6 +86,52 @@ class ApplicationAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).annotate(
             active_users=Count("users", filter=Q(users__is_active=True), distinct=True),
+        )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+
+        # View-only staff get the same member list, without the controls.
+        if obj is not None and not self.has_change_permission(request, obj):
+            return [
+                (name, {**options, "fields": ["people_with_access" if field == "users" else field for field in options["fields"]]})
+                for name, options in fieldsets
+            ]
+
+        return fieldsets
+
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        # Skip the related-object wrapper: its add/change popups expect a <select>.
+        if db_field.name == "users":
+            return self.formfield_for_manytomany(db_field, request, **kwargs)
+
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name != "users":
+            return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+        # Adding means searching accounts, which Django's autocomplete only
+        # allows with permission to view users; the emails box follows suit.
+        can_add = self.admin_site.get_model_admin(get_user_model()).has_view_permission(request)
+
+        search_url = "{}?{}".format(
+            reverse("admin:autocomplete", current_app=self.admin_site.name),
+            urlencode(
+                {
+                    "app_label": self.opts.app_label,
+                    "model_name": self.opts.model_name,
+                    "field_name": db_field.name,
+                }
+            ),
+        )
+
+        return db_field.formfield(
+            form_class=UserAccessField,
+            widget=UserAccessWidget(search_url=search_url, can_add=can_add),
+            allow_email_lookup=can_add,
+            help_text="",
+            **kwargs,
         )
 
     def get_readonly_fields(self, request, obj=None):
@@ -123,6 +171,10 @@ class ApplicationAdmin(admin.ModelAdmin):
     @admin.display(description="Created", ordering="created_at")
     def created(self, app):
         return relative_time(app.created_at)
+
+    @admin.display(description="People with access")
+    def people_with_access(self, app):
+        return render_access_list(app.users.all())
 
     @admin.display(description="Current key")
     def api_key_status(self, app):
