@@ -23,3 +23,6 @@ staticfiles/
 # This deployment's server details, kept out of Git
 DEPLOYMENT.md
 deploy.env
+
+# Zipped copy of skills/ for uploading elsewhere
+skills.zip

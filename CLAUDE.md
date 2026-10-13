@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jivo Auth is a central JWT authentication service (Django 6.1 + DRF + SimpleJWT, PostgreSQL), deployed at `https://auth.jivo.in`. It issues RS256 access/refresh tokens (HS256 remains available via `JWT_ALGORITHM`). Other Jivo apps (Django, FastAPI, Node) verify those tokens locally with the public key from `/.well-known/jwks.json` instead of calling this service on every request. Redis is deliberately not used in V1.
 
-`docs/` holds the integration guides for consuming applications and the deployment guide; update them when settings, endpoints or client behaviour change. `skills/integrate-jivo-auth/` is a Claude Code skill that moves an existing DRF application onto Jivo Auth (prerequisites, analysis, `auth_id`, `import_users`, switch, cleanup); keep it in step with the client package and `import_users`, and keep it free of server details, since the repository is public. `README.md` is the phased roadmap (Phases 1–10; the MVP is Phases 1–4). Work proceeds one phase at a time. When README and code disagree on routes, the code is correct. For example, register and the password endpoints live under `/api/v1/users/`, not `/api/v1/auth/`, and sessions are revoked with `POST .../revoke/` rather than `DELETE`.
+**The GitHub repository is public.** Server details (SSH user and host, paths, internal IPs, database roles) live only in the gitignored `DEPLOYMENT.md` (the production runbook) and `deploy.env`. Never copy them into tracked files, commit messages or skills.
+
+`docs/` holds the integration guides for consuming applications and the deployment guide; update them when settings, endpoints or client behaviour change. `skills/integrate-jivo-auth/` is a Claude Code skill that moves an existing DRF application onto Jivo Auth (prerequisites, analysis, `auth_id`, `import_users`, switch, cleanup); keep it in step with the client package and `import_users`. `README.md` is the phased roadmap (Phases 1–10; the MVP is Phases 1–4). Work proceeds one phase at a time. When README and code disagree, the code is correct: the README still says HS256 and a shared secret, while the service signs with RS256 by default; register and the password endpoints live under `/api/v1/users/`, not `/api/v1/auth/`; and sessions are revoked with `POST .../revoke/` rather than `DELETE`.
 
 ## Commands
 
@@ -25,6 +27,8 @@ uv run pytest users/tests.py::ResetPasswordTests
 uv run pytest packages/jivo-auth-client    # client package: its own settings, SQLite, no Postgres
 
 uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null   # schema check
+uv run python manage.py makemigrations --check --dry-run                          # migrations match the models
+.claude/skills/push-and-deploy/scripts/preflight.sh   # all pre-push checks in one run: migrations, both test suites, schema, leak scan
 
 ./deploy.sh                               # redeploy this working tree to auth.jivo.in (--dry-run, --rollback; target in gitignored deploy.env; see docs/deploy-auth-service.md)
 docker compose up -d --build              # the Django app only, on host networking: uses the host's PostgreSQL at 127.0.0.1:5432, serves on 127.0.0.1:8000
@@ -42,9 +46,11 @@ Email goes through Django 6.1 `MAILERS`, built from the `EMAIL_BACKEND` (`smtp`/
 
 There is no linter or formatter configured.
 
+**Shipping.** The `push-and-deploy` project skill (`.claude/skills/push-and-deploy/`) is the release workflow: `preflight.sh`, then `leak_scan.py` (its private patterns come from `deploy.env`), commit on `main`, push, `./deploy.sh --yes`, and `smoke_test.sh` against production with a throwaway superuser. `deploy.sh` ships the working tree, not a commit, so commit everything first. A rollback swaps the image but never the schema, so destructive migrations need the user's go-ahead. When routes or admin pages change, update `ADMIN_PAGES` and the endpoint paths in `scripts/smoke.py` in the same commit.
+
 ## Architecture
 
-**Django project `config/`** has a single settings module. Every API route is mounted under `/api/v1/` in `config/urls.py`, except `/.well-known/jwks.json` and the HTML pages in `users/pages.py`: `/forgot-password/` (linked from applications' login pages) and the pages emailed links open (`/reset-password/`, `/verify-email/`, which also offers a resend form). Their POSTs use the API's throttle scopes via `ScopedRateThrottle().allow_request()`. Swagger UI is at `/api/docs/` and the schema at `/api/schema/` (drf-spectacular). DRF defaults are `IsAuthenticated` plus SimpleJWT `JWTAuthentication`, so any public view must opt out explicitly with `AllowAny` (or with empty `authentication_classes`/`permission_classes`, as `health` does).
+**Django project `config/`** has a single settings module. Every API route is mounted under `/api/v1/` in `config/urls.py`, except `/.well-known/jwks.json` and the HTML pages in `users/pages.py`: `/forgot-password/` (linked from applications' login pages) and the pages emailed links open (`/reset-password/`, `/verify-email/`, which also offers a resend form). Their POSTs use the API's throttle scopes via `ScopedRateThrottle().allow_request()`. Swagger UI is at `/api/docs/`, ReDoc at `/api/redoc/` and the schema at `/api/schema/` (drf-spectacular). DRF defaults are `IsAuthenticated` plus SimpleJWT `JWTAuthentication`, so any public view must opt out explicitly with `AllowAny` (or with empty `authentication_classes`/`permission_classes`, as `health` does).
 
 **API docs.** Each app's `schema.py` holds its endpoints' `extend_schema` objects: tags, summary, description, responses and examples. The views only apply them as class decorators.
 - **Shared pieces** are in `config/openapi.py`: `MessageSerializer`, `ErrorSerializer`, the 401 and 429 responses, example tokens, and `rate_limit()`, which reads the throttle settings.
