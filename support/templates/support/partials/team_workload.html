@@ -1,0 +1,28 @@
+{% load support_tags %}
+{# teams: dashboard.team_workload() rows. manage: link to the admin team page instead of the overview. #}
+<div class="table-wrap"><table class="table">
+  <thead><tr>
+    <th scope="col">Team</th>
+    <th scope="col" class="num">Open</th>
+    <th scope="col" class="num">Unassigned</th>
+    <th scope="col" class="num">In progress</th>
+    <th scope="col" class="num">Waiting</th>
+    <th scope="col" class="num">Resolved</th>
+    <th scope="col" class="num">Closed</th>
+    <th scope="col" class="num">Overdue</th>
+  </tr></thead>
+  <tbody>
+    {% for team in teams %}
+      <tr{% if not team.is_active %} class="is-inactive"{% endif %}>
+        <td><a href="{% if manage %}{% url 'support:manage-team' team.pk %}{% else %}{{ team.url }}{% endif %}">{{ team.name }}</a>{% if not team.is_active %} {% badge "Inactive" "neutral" %}{% endif %}</td>
+        <td class="num">{{ team.open_count }}</td>
+        <td class="num">{% if team.unassigned_count %}{% badge team.unassigned_count "warning" %}{% else %}0{% endif %}</td>
+        <td class="num">{{ team.in_progress_count }}</td>
+        <td class="num">{{ team.waiting_count }}</td>
+        <td class="num">{{ team.resolved_count }}</td>
+        <td class="num">{{ team.closed_count }}</td>
+        <td class="num">{% if team.overdue_count %}{% badge team.overdue_count "critical" %}{% else %}0{% endif %}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table></div>

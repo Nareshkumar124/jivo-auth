@@ -159,6 +159,21 @@ There, remove `network_mode: host` and publish the port with
 PostgreSQL must then accept connections from Docker's network
 (`listen_addresses` and `pg_hba.conf`).
 
+### 5b. Attachments directory
+
+Support ticket attachments are stored on the host in `media/` next to the
+code (`docker-compose.yml` mounts it as `/app/media`). Create it so the
+container's user can write to it, and include it in backups:
+
+```bash
+mkdir -p media
+sudo chown "${APP_UID:-10001}" media     # the user in APP_UID/APP_GID, or 10001
+```
+
+`deploy.sh` never syncs or deletes `media/`, refuses to deploy while it's
+missing, and its pre-flight (`check --deploy`) fails if the container can't
+write to it (`support.E001`, `support.E002`).
+
 ### 6. Nginx
 
 ```nginx
@@ -169,7 +184,9 @@ server {
     ssl_certificate     /etc/letsencrypt/live/auth.jivo.in/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/auth.jivo.in/privkey.pem;
 
-    client_max_body_size 1m;
+    # Support ticket attachments (the admin's "Largest attachment" setting,
+    # 10 MB by default, plus some headroom).
+    client_max_body_size 25m;
 
     location / {
         proxy_pass http://127.0.0.1:8000;

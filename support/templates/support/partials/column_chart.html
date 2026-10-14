@@ -1,0 +1,38 @@
+{% load support_tags %}
+{# Stacked columns, one per day. chart: adminpanel.charts.column_chart(). #}
+<figure class="chart">
+  {% if chart.series|length > 1 %}
+    <ul class="legend" aria-label="Legend">
+      {% for series in chart.series %}<li><span class="swatch swatch--{{ series.key }}" aria-hidden="true"></span>{{ series.label }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  <div class="columns">
+    <div class="columns__grid" aria-hidden="true">
+      {% for tick in chart.ticks %}<div class="columns__tick" style="bottom: {{ tick.position }}%"><span>{{ tick.value|compact }}</span></div>{% endfor %}
+    </div>
+    <ol class="columns__plot" aria-label="{{ chart_label }}">
+      {% for column in chart.columns %}
+        <li class="col{% if column.is_today %} is-today{% endif %}{% if column.align %} col--{{ column.align }}{% endif %}" tabindex="0"
+            aria-label="{{ column.label }}: {% for value in column.values %}{{ value.value }} {{ value.label|lower }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+          <div class="col__area">
+            <div class="col__stack" style="height: {{ column.height|stringformat:'.2f' }}%">
+              {% for segment in column.segments %}<span class="col__seg col__seg--{{ segment.key }}" style="flex-grow: {{ segment.value }}"></span>{% endfor %}
+            </div>
+          </div>
+          <span class="col__label" aria-hidden="true">{{ column.short }}</span>
+          <div class="tip" aria-hidden="true">
+            <div class="tip__title">{{ column.label }}</div>
+            {% for value in column.values %}<div class="tip__row"><span class="tip__key tip__key--{{ value.key }}"></span><strong>{{ value.value }}</strong><span>{{ value.label }}</span></div>{% endfor %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </div>
+  <details class="table-view">
+    <summary>View as table</summary>
+    <table class="table table--compact">
+      <thead><tr><th scope="col">Day</th>{% for series in chart.series %}<th scope="col" class="num">{{ series.label }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for column in chart.columns %}<tr><th scope="row">{{ column.label }}</th>{% for value in column.values %}<td class="num">{{ value.value }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table>
+  </details>
+</figure>

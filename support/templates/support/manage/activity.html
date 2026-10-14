@@ -1,0 +1,38 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>Activity history</h1><p class="page-head__sub">Every change to every ticket: who did what, and when.</p></div></div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  <form method="get" class="filters" role="search">
+    <label class="filters__search">{% icon "search" 16 %}<span class="visually-hidden">Search</span>{{ form.q }}</label>
+    <label class="visually-hidden" for="{{ form.type.id_for_label }}">Action</label>{{ form.type }}
+    <label class="filters__field">Since{{ form.since }}</label>
+    <label class="filters__field">Until{{ form.until }}</label>
+    <button type="submit" class="button">{% icon "filter" 15 %}Apply</button>
+    {% if is_filtered %}<a class="button button--ghost" href="{{ request.path }}">{% icon "x" 15 %}Clear</a>{% endif %}
+  </form>
+  {% if page.object_list %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">Ticket</th><th scope="col">By</th><th scope="col">Details</th></tr></thead>
+      <tbody>
+        {% for event in page.object_list %}
+          <tr>
+            <td><time datetime="{{ event.created_at|date:'c' }}" title="{{ event.created_at|date:'Y-m-d H:i T' }}">{{ event.created_at|date:"j M Y, H:i" }}</time></td>
+            <td>{% badge event.get_type_display event|event_tone %}</td>
+            <td><a href="{{ event.ticket.get_absolute_url }}">{{ event.ticket.reference }}</a><br><span class="muted">{{ event.ticket.subject|truncatechars:60 }}</span></td>
+            <td>{% if event.actor %}{{ event.actor|person }}{% else %}<span class="muted">System</span>{% endif %}</td>
+            <td>{{ event.summary|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% include "support/partials/pagination.html" %}
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="activity" message="No activity matches." %}
+  {% endif %}
+</section>
+{% endblock %}

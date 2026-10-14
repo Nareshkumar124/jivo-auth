@@ -1,0 +1,13 @@
+{% extends "support/auth_base.html" %}
+{% load support_tags %}
+
+{% block title %}Not found · Jivo Support{% endblock %}
+
+{% block content %}
+  <div class="empty">
+    <span class="empty__icon">{% icon "search" 22 %}</span>
+    <h1>Page not found</h1>
+    <p>The page doesn't exist, or the link is out of date.</p>
+    <a class="button" href="/">Back to the dashboard</a>
+  </div>
+{% endblock %}

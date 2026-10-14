@@ -1,0 +1,62 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>All tickets</h1><p class="page-head__sub">{{ page.paginator.count }} ticket{{ page.paginator.count|pluralize }}{% if is_filtered %} match the filters{% endif %}.</p></div>
+    <div class="page-head__actions">
+      <a class="button" href="?{{ export_query }}">{% icon "download" 16 %}Export CSV</a>
+      <a class="button" href="{% url 'support:manage-reports' %}">{% icon "chart" 16 %}Reports</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  <form method="get" class="filters" role="search">
+    <label class="filters__search">{% icon "search" 16 %}<span class="visually-hidden">Search</span>{{ form.q }}</label>
+    <label class="visually-hidden" for="{{ form.status.id_for_label }}">Status</label>{{ form.status }}
+    <label class="visually-hidden" for="{{ form.priority.id_for_label }}">Priority</label>{{ form.priority }}
+    <label class="visually-hidden" for="{{ form.sla.id_for_label }}">SLA</label>{{ form.sla }}
+    <label class="visually-hidden" for="{{ form.sort.id_for_label }}">Sort</label>{{ form.sort }}
+    <button type="submit" class="button">{% icon "filter" 15 %}Apply</button>
+    {% if is_filtered %}<a class="button button--ghost" href="{{ request.path }}">{% icon "x" 15 %}Clear</a>{% endif %}
+    <details class="filters__more"{% if form.department.value or form.application.value or form.team.value or form.assignee.value or form.created_from.value or form.created_to.value or form.updated_from.value or form.updated_to.value %} open{% endif %}>
+      <summary>{% icon "filter" 14 %}More filters</summary>
+      <div class="filters__grid">
+        <label class="filters__field">Department{{ form.department }}</label>
+        <label class="filters__field">Application{{ form.application }}</label>
+        <label class="filters__field">Team{{ form.team }}</label>
+        <label class="filters__field">Assigned to{{ form.assignee }}</label>
+        <label class="filters__field">Raised from{{ form.created_from }}</label>
+        <label class="filters__field">Raised to{{ form.created_to }}</label>
+        <label class="filters__field">Updated from{{ form.updated_from }}</label>
+        <label class="filters__field">Updated to{{ form.updated_to }}</label>
+        <label class="filters__field">Per page{{ form.per_page }}</label>
+      </div>
+    </details>
+  </form>
+
+  {% if page.object_list %}
+    {% include "support/partials/ticket_table.html" with tickets=page.object_list show_team=True show_assignee=True show_creator=True selectable=True %}
+
+    <form method="post" action="{% url 'support:manage-bulk' %}" id="bulk-form" class="bulkbar" data-bulk-form>
+      {% csrf_token %}
+      <input type="hidden" name="back" value="{{ request.get_full_path }}">
+      <span class="bulkbar__count" data-bulk-count>Select tickets to act on them</span>
+      <label class="visually-hidden" for="bulk-action">Action</label>
+      <select name="action" id="bulk-action" required>
+        <option value="">Choose an action…</option>
+        {% for value, label in bulk_actions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="button button--primary" data-bulk-submit>Continue</button>
+    </form>
+
+    {% include "support/partials/pagination.html" %}
+  {% elif is_filtered %}
+    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><p>Try another search or clear the filters.</p><a class="button" href="{{ request.path }}">Clear filters</a></div>
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="ticket" heading="No tickets yet" message="They appear here as people report problems." %}
+  {% endif %}
+</section>
+{% endblock %}

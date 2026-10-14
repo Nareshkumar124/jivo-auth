@@ -1,0 +1,34 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>Notifications</h1><p class="page-head__sub">Changes to tickets you raised or handle. The same messages are emailed to you.</p></div>
+    {% if unread_notifications %}<div class="page-head__actions"><form method="post" class="inline-form">{% csrf_token %}<button type="submit" class="button">{% icon "check" 16 %}Mark all as read</button></form></div>{% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+  {% if page.object_list %}
+    <ol class="notes">
+      {% for note in page.object_list %}
+        <li class="notes__item{% if not note.is_read %} is-unread{% endif %}">
+          <span class="notes__dot" aria-hidden="true"></span>
+          <div class="notes__body">
+            <p class="notes__title">{% if note.ticket %}<a href="{{ note.ticket.get_absolute_url }}">{{ note.title }}</a>{% else %}{{ note.title }}{% endif %}</p>
+            {% if note.body %}<p class="notes__text">{{ note.body|truncatechars:220|linebreaksbr }}</p>{% endif %}
+            <p class="notes__meta">{% if note.ticket %}{{ note.ticket.reference }} · {% endif %}<time datetime="{{ note.created_at|date:'c' }}" title="{{ note.created_at|date:'Y-m-d H:i T' }}">{{ note.created_at|timesince }} ago</time>{% if not note.is_read %} · <span class="visually-hidden">unread</span>{% endif %}</p>
+          </div>
+          {% if not note.is_read %}
+            <form method="post" class="inline-form">{% csrf_token %}<input type="hidden" name="id" value="{{ note.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="button button--ghost button--small" aria-label="Mark as read">{% icon "check" 15 %}</button></form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+    {% include "support/partials/pagination.html" %}
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="bell" message="Nothing yet. You'll be told here when a ticket of yours changes." %}
+  {% endif %}
+</section>
+{% endblock %}

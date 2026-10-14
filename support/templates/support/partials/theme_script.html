@@ -1,0 +1,2 @@
+{# Applies a stored theme before the first paint, so dark-mode users don't see a light flash. #}
+<script>try{var t=localStorage.getItem("jivo-support-theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}</script>

@@ -1,0 +1,7 @@
+{% load support_tags %}
+{# icon_name, message, optional heading and tone ("good"). #}
+<div class="empty{% if tone %} empty--{{ tone }}{% endif %}">
+  <span class="empty__icon">{% icon icon_name|default:"inbox" 22 %}</span>
+  {% if heading %}<h2>{{ heading }}</h2>{% endif %}
+  <p>{{ message }}</p>
+</div>

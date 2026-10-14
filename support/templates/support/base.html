@@ -1,0 +1,84 @@
+{% load static support_tags %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% if title %}{{ title }} · {% endif %}Jivo Support</title>
+  {% include "support/partials/theme_script.html" %}
+  <link rel="stylesheet" href="{% static 'support/css/app.css' %}">
+  <script src="{% static 'support/js/app.js' %}" defer></script>
+</head>
+<body class="{% block bodyclass %}{% endblock %}">
+{% include "support/partials/icons.html" %}
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="app-header">
+  <button class="header-button menu-button" type="button" data-menu-button aria-controls="sidenav" aria-expanded="false" aria-label="Open navigation">{% icon "menu" 20 %}</button>
+  <a class="brand" href="{% url 'support:home' %}">
+    <span class="brand__mark" aria-hidden="true">{% icon "life-buoy" 18 %}</span>
+    <span>Jivo Support</span>
+  </a>
+  {% if environment %}<span class="env-badge">{{ environment }}</span>{% endif %}
+  <span class="app-header__spacer"></span>
+
+  <a class="header-link" href="{% url 'support:notifications' %}" aria-label="Notifications{% if unread_notifications %}, {{ unread_notifications }} unread{% endif %}">
+    {% icon "bell" 18 %}{% if unread_notifications %}<span class="header-count" aria-hidden="true">{{ unread_notifications }}</span>{% endif %}
+  </a>
+  {% if show_auth_admin %}
+    <a class="header-link header-link--secondary" href="{% url 'admin:index' %}">{% icon "shield" 16 %}<span class="header-link__label">Auth admin</span></a>
+  {% endif %}
+  <a class="header-link header-link--secondary" href="{% url 'support:password-change' %}">{% icon "lock" 16 %}<span class="header-link__label">Password</span></a>
+  <form class="inline-form" method="post" action="{% url 'support:logout' %}">
+    {% csrf_token %}
+    <button class="header-button" type="submit">{% icon "log-out" 16 %}<span class="header-link__label">Sign out</span></button>
+  </form>
+  <button class="header-button" type="button" data-theme-toggle aria-label="Theme">{% icon "contrast" 18 %}</button>
+  <span class="user-chip">
+    <span class="avatar" aria-hidden="true">{{ user|initials_of }}</span>
+    <span class="user-chip__text">
+      <span class="user-chip__name">{{ user.get_short_name }}</span>
+      <span class="user-chip__role">{{ role_label }}</span>
+    </span>
+  </span>
+</header>
+
+<div class="app-body">
+  <div class="nav-backdrop" data-nav-backdrop></div>
+  <nav class="sidenav" id="sidenav" aria-label="Main">
+    {% for section in nav_sections %}
+      <div class="sidenav__section">
+        <h2 class="sidenav__heading">{{ section.title }}</h2>
+        <ul>
+          {% for item in section.items %}
+            <li>
+              <a class="sidenav__item{% if item.current %} is-current{% endif %}" href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}>
+                {% icon item.icon 18 %}<span>{{ item.label }}</span>
+                {% if item.badge %}<span class="sidenav__badge">{{ item.badge }}</span>{% endif %}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+    <div class="sidenav__foot">
+      <p>Signed in as {{ user.email }} · {{ role_label }}</p>
+      <ul>
+        <li><a class="sidenav__item" href="{% url 'support:password-change' %}">{% icon "lock" 16 %}<span>Change password</span></a></li>
+        {% if show_auth_admin %}<li><a class="sidenav__item" href="{% url 'admin:index' %}">{% icon "shield" 16 %}<span>Auth admin</span></a></li>{% endif %}
+      </ul>
+    </div>
+  </nav>
+
+  <main class="content" id="main" tabindex="-1">
+    <div class="content__inner">
+      {% block breadcrumbs %}{% endblock %}
+      {% include "support/partials/messages.html" %}
+      {% block page_head %}{% endblock %}
+      {% block content %}{% endblock %}
+      <footer class="footer">Jivo Support{% if environment %} · {{ environment }}{% endif %}</footer>
+    </div>
+  </main>
+</div>
+</body>
+</html>

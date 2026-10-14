@@ -1,0 +1,67 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>Reports and analytics</h1><p class="page-head__sub">Tickets raised from {{ report.start|date:"j M Y" }} to {{ report.end|date:"j M Y" }}, counted from the database as it is now.</p></div>
+    <div class="page-head__actions">
+      <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=summary">{% icon "download" 16 %}Export summary</a>
+      <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=tickets">{% icon "download" 16 %}Export tickets</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+{% with r=report s=report.summary %}
+<form method="get" class="card filters" style="border-radius: var(--radius); margin-bottom: 20px" role="search">
+  <label class="filters__field">From{{ form.start }}</label>
+  <label class="filters__field">To{{ form.end }}</label>
+  <label class="filters__field">Department{{ form.department }}</label>
+  <label class="filters__field">Application{{ form.application }}</label>
+  <label class="filters__field">Team{{ form.team }}</label>
+  <button type="submit" class="button button--primary">{% icon "filter" 15 %}Apply</button>
+  {% if query %}<a class="button button--ghost" href="{{ request.path }}">Reset</a>{% endif %}
+</form>
+
+<section class="tiles" aria-label="Summary">
+  <div class="tile"><span class="tile__label">{% icon "plus" 16 %}Raised</span><span class="tile__value">{{ s.created|compact }}</span><span class="tile__note">in the range</span></div>
+  <div class="tile"><span class="tile__label">{% icon "check-circle" 16 %}Resolved</span><span class="tile__value">{{ s.resolved|compact }}</span><span class="tile__note">{{ s.closed }} closed · {{ s.reopened }} reopened</span></div>
+  <div class="tile"><span class="tile__label">{% icon "clock" 16 %}First response</span><span class="tile__value">{{ s.response.hours }}</span><span class="tile__note">average, {{ s.response.count }} answered</span></div>
+  <div class="tile"><span class="tile__label">{% icon "activity" 16 %}Resolution</span><span class="tile__value">{{ s.resolution.hours }}</span><span class="tile__note">{% if s.sla.percent is not None %}{{ s.sla.percent|floatformat:0 }}% within SLA ({{ s.sla.met }}/{{ s.sla.total }}){% else %}no SLA data{% endif %}</span></div>
+  <div class="tile"><span class="tile__label">{% icon "inbox" 16 %}Pending now</span><span class="tile__value">{{ s.pending_now|compact }}</span><span class="tile__note">active, matching the filters</span></div>
+  <div class="tile"><span class="tile__label">{% icon "alert" 16 %}Overdue now</span><span class="tile__value">{{ s.overdue_now|compact }}</span><span class="tile__note">past a deadline</span></div>
+</section>
+
+{% if r.chart %}
+<div class="grid">
+  <section class="card"><header class="card__head"><div><h2 class="card__title">Tickets over time</h2><p class="card__sub">Raised and resolved per day</p></div></header>{% include "support/partials/column_chart.html" with chart=r.chart chart_label="Tickets raised and resolved per day" %}</section>
+  <section class="card"><header class="card__head"><div><h2 class="card__title">Pending and overdue</h2><p class="card__sub">Open at the end of each day</p></div></header>{% include "support/partials/column_chart.html" with chart=r.trend chart_label="Pending and overdue tickets per day" %}</section>
+</div>
+{% else %}
+  <div class="callout callout--info">{% icon "info" 16 %}<p>Daily charts are shown for ranges up to 92 days. Narrow the range to see them.</p></div>
+{% endif %}
+
+<div class="grid">
+  <section class="card"><header class="card__head"><h2 class="card__title">By department</h2></header>{% include "support/partials/report_table.html" with rows=r.departments bars=r.department_bars %}</section>
+  <section class="card"><header class="card__head"><h2 class="card__title">By application</h2></header>{% include "support/partials/report_table.html" with rows=r.applications bars=r.application_bars %}</section>
+</div>
+<div class="grid">
+  <section class="card"><header class="card__head"><div><h2 class="card__title">By status</h2><p class="card__sub">Tickets raised in the range</p></div></header>{% include "support/partials/share_table.html" with rows=r.statuses kind="status" %}</section>
+  <section class="card"><header class="card__head"><div><h2 class="card__title">By priority</h2><p class="card__sub">Tickets raised in the range</p></div></header>{% include "support/partials/share_table.html" with rows=r.priorities kind="priority" %}</section>
+</div>
+<div class="grid">
+  <section class="card"><header class="card__head"><h2 class="card__title">By team</h2></header>{% include "support/partials/report_table.html" with rows=r.teams %}</section>
+  <section class="card">
+    <header class="card__head"><div><h2 class="card__title">Team members</h2><p class="card__sub">Active tickets held now, and resolved in the range</p></div></header>
+    {% if r.members %}
+      <div class="table-wrap"><table class="table table--compact">
+        <thead><tr><th scope="col">Member</th><th scope="col">Team</th><th scope="col" class="num">Active</th><th scope="col" class="num">Resolved</th></tr></thead>
+        <tbody>{% for row in r.members %}<tr><td>{{ row.user|person }}<br><span class="muted">{{ row.role }}</span></td><td>{{ row.team.name }}</td><td class="num">{{ row.active }}</td><td class="num">{{ row.resolved }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+    {% else %}
+      {% include "support/partials/empty.html" with icon_name="users" message="No team members." %}
+    {% endif %}
+  </section>
+</div>
+{% endwith %}
+{% endblock %}

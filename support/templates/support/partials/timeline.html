@@ -1,0 +1,13 @@
+{% load support_tags %}
+{# events: TicketEvent objects; with_ticket shows the ticket reference. #}
+<ol class="timeline">
+  {% for event in events %}
+    <li class="timeline__item">
+      <span class="timeline__icon">{% icon event|event_icon 14 %}</span>
+      <div class="timeline__body">
+        <p class="timeline__line">{% if with_ticket %}<a href="{{ event.ticket.get_absolute_url }}">{{ event.ticket.reference }}</a> {% endif %}<strong>{{ event.get_type_display }}</strong>{% if event.summary %} <span class="muted">· {{ event.summary }}</span>{% endif %}</p>
+        <p class="timeline__meta">{% if event.actor %}{{ event.actor|person }}{% else %}System{% endif %} · <time datetime="{{ event.created_at|date:'c' }}" title="{{ event.created_at|date:'Y-m-d H:i T' }}">{{ event.created_at|timesince }} ago</time></p>
+      </div>
+    </li>
+  {% endfor %}
+</ol>

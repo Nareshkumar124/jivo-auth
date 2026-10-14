@@ -1,0 +1,50 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>Applications</h1><p class="page-head__sub">Which department each application is listed under and which team receives its tickets. Sign-in access to applications is managed in the auth admin panel.</p></div>
+    <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:manage-application-create' %}">{% icon "plus" 16 %}New application</a></div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  <form method="get" class="filters" role="search">
+    <label class="filters__search">{% icon "search" 16 %}<span class="visually-hidden">Search</span><input type="search" name="q" value="{{ filters.q }}" placeholder="Search name or slug"></label>
+    <label class="visually-hidden" for="filter-department">Department</label>
+    <select name="department" id="filter-department"><option value="">Any department</option>{% for d in departments %}<option value="{{ d.pk }}"{% if filters.department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
+    <label class="visually-hidden" for="filter-team">Team</label>
+    <select name="team" id="filter-team"><option value="">Any team</option>{% for t in teams %}<option value="{{ t.pk }}"{% if filters.team == t.pk|stringformat:"s" %} selected{% endif %}>{{ t.name }}</option>{% endfor %}</select>
+    <label class="visually-hidden" for="filter-routing">Routing</label>
+    <select name="routing" id="filter-routing">
+      <option value="">Any routing</option>
+      <option value="routed"{% if filters.routing == "routed" %} selected{% endif %}>Department and team set</option>
+      <option value="no_team"{% if filters.routing == "no_team" %} selected{% endif %}>No responsible team</option>
+      <option value="no_department"{% if filters.routing == "no_department" %} selected{% endif %}>Not on the ticket form</option>
+      <option value="off"{% if filters.routing == "off" %} selected{% endif %}>Not accepting tickets</option>
+    </select>
+    <button type="submit" class="button">{% icon "filter" 15 %}Apply</button>
+    {% if is_filtered %}<a class="button button--ghost" href="{{ request.path }}">{% icon "x" 15 %}Clear</a>{% endif %}
+  </form>
+  {% if applications %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th scope="col">Application</th><th scope="col">Department</th><th scope="col">Responsible team</th><th scope="col">Tickets</th><th scope="col" class="num">Pending</th><th scope="col" class="num">All</th></tr></thead>
+    <tbody>
+      {% for app in applications %}
+        <tr>
+          <td><a href="{% url 'support:manage-application' app.pk %}"><strong>{{ app.name }}</strong></a><br><code class="muted">{{ app.slug }}</code>{% if not app.is_active %} {% badge "sign-in off" "neutral" %}{% endif %}</td>
+          <td>{% if app.department %}{{ app.department.name }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if app.support_team %}{{ app.support_team.name }}{% elif app.department.default_team %}<span class="muted">{{ app.department.default_team.name }} (department default)</span>{% elif app.department %}{% badge "No team" "warning" %}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td>{% if not app.department %}<span class="muted">Not on the form</span>{% elif app.tickets_enabled and app.is_active %}{% badge "Accepted" "good" %}{% else %}{% badge "Off" "neutral" %}{% endif %}</td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?application={{ app.pk }}&status=active">{{ app.pending }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?application={{ app.pk }}">{{ app.total }}</a></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="grid" message="No applications match." %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% load support_tags %}
+{# Horizontal bars, value at the tip. bars: adminpanel.charts.bar_list(). #}
+<ul class="bars">
+  {% for bar in bars %}
+    <li class="bars__row">
+      {% if bar.url %}<a class="bars__label" href="{{ bar.url }}">{{ bar.label }}</a>{% else %}<span class="bars__label">{{ bar.label }}</span>{% endif %}
+      <span class="bars__area"><span class="bars__fill" style="width: calc({{ bar.width|stringformat:'.2f' }}% * 0.82)"></span><span class="bars__value">{{ bar.value|compact }}</span></span>
+    </li>
+  {% endfor %}
+</ul>

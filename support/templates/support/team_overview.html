@@ -1,0 +1,62 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'support:team-index' %}">Team overview</a></li><li aria-current="page">{{ team.name }}</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>{{ team.name }}</h1><p class="page-head__sub">{% if team.description %}{{ team.description }} · {% endif %}{{ counts.active }} active · {{ counts.unassigned }} unassigned{% if counts.overdue %} · <strong class="text-critical">{{ counts.overdue }} overdue</strong>{% endif %}</p></div>
+    {% if is_support_admin %}<div class="page-head__actions"><a class="button" href="{% url 'support:manage-team' team.pk %}">{% icon "settings" 16 %}Manage team</a></div>{% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card" aria-labelledby="perf-title">
+  <header class="card__head"><div><h2 class="card__title" id="perf-title">Performance</h2><p class="card__sub">Open, in progress and waiting now; the rest over the last {{ performance.days }} days</p></div></header>
+  <dl class="stats">
+    <div><dt>Open</dt><dd>{{ counts.open }}</dd></div>
+    <div><dt>In progress</dt><dd>{{ counts.in_progress }}</dd></div>
+    <div><dt>Waiting</dt><dd>{{ counts.waiting }}</dd></div>
+    <div><dt>Raised</dt><dd>{{ performance.created }}</dd></div>
+    <div><dt>Resolved</dt><dd>{{ performance.resolved }}</dd></div>
+    <div><dt>First response</dt><dd>{{ performance.response }}</dd><dd class="muted">average</dd></div>
+    <div><dt>Resolution</dt><dd>{{ performance.resolution }}</dd><dd class="muted">average</dd></div>
+    <div><dt>Within SLA</dt><dd>{% if performance.sla_percent is not None %}{{ performance.sla_percent }}%{% else %}—{% endif %}</dd></div>
+  </dl>
+</section>
+
+{% if overdue %}
+  <section class="card card--flush attention" aria-labelledby="overdue-title">
+    <header class="card__head"><h2 class="card__title" id="overdue-title">{% icon "alert" 16 %}Overdue</h2></header>
+    {% include "support/partials/ticket_table.html" with tickets=overdue show_assignee=True show_creator=True %}
+  </section>
+{% endif %}
+
+<section class="card card--flush" aria-labelledby="members-title">
+  <header class="card__head"><div><h2 class="card__title" id="members-title">Members</h2><p class="card__sub">Who holds what</p></div></header>
+  {% include "support/partials/member_table.html" with members=members %}
+</section>
+
+{% if can_manage %}
+  <section class="card form" aria-labelledby="reassign-title">
+    <header class="card__head"><div><h2 class="card__title" id="reassign-title">Reassign a member's tickets</h2><p class="card__sub">For someone who is away or leaving. Every active ticket of {{ team.name }} assigned to them moves; each one is recorded and the new owner is told.</p></div></header>
+    <form method="post" action="{% url 'support:team-reassign' team.pk %}">
+      {% csrf_token %}
+      <div class="form__row">
+        {% include "support/partials/field.html" with field=reassign_form.member %}
+        {% include "support/partials/field.html" with field=reassign_form.to %}
+      </div>
+      <button type="submit" class="button button--primary">Reassign tickets</button>
+    </form>
+  </section>
+{% endif %}
+
+<section class="card" aria-labelledby="apps-title">
+  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications</h2><p class="card__sub">New tickets for these go to {{ team.name }}</p></div></header>
+  {% if applications %}
+    <ul class="pill-list">{% for app in applications %}<li>{% badge app.name "neutral" %}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="muted">No application routes its tickets here yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

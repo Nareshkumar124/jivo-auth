@@ -16,6 +16,11 @@ manager** role, or a superuser.
 
 Only superusers can make someone staff, change roles, or edit a superuser.
 
+These roles are for this admin panel only. The support ticket system at
+https://auth.jivo.in/ has its own roles (administrator, team manager, team
+member), managed in the ticket system itself: see
+[Support tickets](support-tickets.md).
+
 The examples use an application with the slug `oms`.
 
 ## 1. Create the application and its API key

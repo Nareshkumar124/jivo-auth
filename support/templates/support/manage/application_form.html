@@ -1,0 +1,34 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'support:manage-applications' %}">Applications</a></li><li aria-current="page">{{ title }}</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1>{{ title }}</h1>
+      <p class="page-head__sub">{% if application %}<code>{{ application.slug }}</code> · {{ counts.pending }} pending of {{ counts.total }} ticket{{ counts.total|pluralize }}{% else %}Registers the application for tickets only: no API key and no users, so sign-in is unaffected.{% endif %}</p>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="card form form--narrow" novalidate>
+  {% csrf_token %}
+  {% include "support/partials/form_errors.html" %}
+  {% if not application %}
+    {% include "support/partials/field.html" with field=form.name %}
+    {% include "support/partials/field.html" with field=form.slug %}
+  {% endif %}
+  {% include "support/partials/field.html" with field=form.department %}
+  {% include "support/partials/field.html" with field=form.support_team %}
+  {% include "support/partials/field.html" with field=form.tickets_enabled %}
+  {% if application and not application.is_active %}
+    <div class="callout callout--info">{% icon "info" 16 %}<p>Sign-in to this application is turned off in the auth admin panel, so it isn't offered on the ticket form either.</p></div>
+  {% endif %}
+  <div class="form__actions">
+    <button type="submit" class="button button--primary">{% if application %}Save{% else %}Add application{% endif %}</button>
+    <a class="button button--ghost" href="{% url 'support:manage-applications' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

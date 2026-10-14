@@ -1,0 +1,57 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'support:my-tickets' %}">My tickets</a></li><li aria-current="page">Raise ticket</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>Raise a ticket</h1><p class="page-head__sub">Describe the problem and it goes straight to the team responsible for the application.</p></div></div>
+{% endblock %}
+
+{% block content %}
+{% if catalog_empty %}
+  <div class="card">{% include "support/partials/empty.html" with icon_name="building" heading="No applications accept tickets yet" message="A ticket administrator has to add departments and put applications in them first." %}</div>
+{% else %}
+<form method="post" enctype="multipart/form-data" class="card form" novalidate>
+  {% csrf_token %}
+  {% include "support/partials/form_errors.html" %}
+
+  <div class="form__row">
+    <div class="field{% if form.department.errors %} has-error{% endif %}">
+      <label for="{{ form.department.id_for_label }}">Department</label>
+      {{ form.department }}
+      {% for error in form.department.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+      <p class="field__help">{{ form.department.help_text }}</p>
+    </div>
+    <div class="field{% if form.application.errors %} has-error{% endif %}">
+      <label for="id_application">Application</label>
+      <select name="application" id="id_application" data-depends-on="{{ form.department.id_for_label }}" data-empty-label="Choose a department first" required>
+        <option value="">Choose an application</option>
+        {% for application in form.fields.application.queryset %}
+          <option value="{{ application.pk }}" data-parent="{{ application.department_id }}"{% if form.application.value|stringformat:"s" == application.pk|stringformat:"s" %} selected{% endif %}>{{ application.name }}</option>
+        {% endfor %}
+      </select>
+      {% for error in form.application.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+    </div>
+  </div>
+
+  {% include "support/partials/field.html" with field=form.subject %}
+  {% include "support/partials/field.html" with field=form.description %}
+
+  <div class="field{% if form.attachments.errors %} has-error{% endif %}">
+    <label for="{{ form.attachments.id_for_label }}">Attachments</label>
+    <div class="upload" data-upload>
+      {{ form.attachments }}
+      <span class="upload__hint">{% icon "paperclip" 16 %}<span data-upload-label>Add screenshots, logs or documents</span></span>
+      <ul class="upload__list" data-upload-list hidden></ul>
+    </div>
+    {% for error in form.attachments.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+    <p class="field__help">{{ form.attachments.help_text }}</p>
+  </div>
+
+  <div class="form__actions">
+    <button type="submit" class="button button--primary">{% icon "send" 16 %}Submit ticket</button>
+    <a class="button button--ghost" href="{% url 'support:my-tickets' %}">Cancel</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

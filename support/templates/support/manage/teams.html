@@ -1,0 +1,36 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>Teams and members</h1><p class="page-head__sub">Each application names a responsible team; its members receive and handle the tickets.</p></div>
+    <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:manage-team-create' %}">{% icon "plus" 16 %}New team</a></div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  {% if teams %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th scope="col">Team</th><th scope="col" class="num">Members</th><th scope="col">Applications</th><th scope="col" class="num">Open</th><th scope="col" class="num">Unassigned</th><th scope="col" class="num">In progress</th><th scope="col" class="num">Resolved</th><th scope="col" class="num">Closed</th><th scope="col" class="num">Overdue</th></tr></thead>
+    <tbody>
+      {% for team in teams %}
+        <tr{% if not team.is_active %} class="is-inactive"{% endif %}>
+          <td><a href="{% url 'support:manage-team' team.pk %}"><strong>{{ team.name }}</strong></a>{% if not team.is_active %} {% badge "Inactive" "neutral" %}{% endif %}</td>
+          <td class="num">{{ team.member_count }}</td>
+          <td><span class="chips">{% for app in team.applications.all %}{% badge app.name "neutral" %}{% empty %}<span class="muted">None</span>{% endfor %}</span></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&status=new">{{ team.open_count }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&status=active&assignee=none">{{ team.unassigned_count }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&status=in_progress">{{ team.in_progress_count }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&status=resolved">{{ team.resolved_count }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&status=closed">{{ team.closed_count }}</a></td>
+          <td class="num">{% if team.overdue_count %}<a href="{% url 'support:manage-tickets' %}?team={{ team.pk }}&sla=overdue">{% badge team.overdue_count "critical" %}</a>{% else %}0{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    <div class="empty"><span class="empty__icon">{% icon "users" 22 %}</span><h2>No teams yet</h2><p>Create teams such as OMS Team or JSAP Team and add their members.</p><a class="button button--primary" href="{% url 'support:manage-team-create' %}">{% icon "plus" 16 %}New team</a></div>
+  {% endif %}
+</section>
+{% endblock %}

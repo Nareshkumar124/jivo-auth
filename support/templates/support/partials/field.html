@@ -1,0 +1,18 @@
+{# field: a BoundField. Checkboxes get their label beside them. #}
+{% if field.widget_type == "checkbox" %}
+  <div class="field field--check{% if field.errors %} has-error{% endif %}">
+    {{ field }}
+    <div>
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {% if field.help_text %}<p class="field__help">{{ field.help_text }}</p>{% endif %}
+      {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+    </div>
+  </div>
+{% else %}
+  <div class="field{% if field.errors %} has-error{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<div class="field__help">{{ field.help_text }}</div>{% endif %}
+    {% for error in field.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+  </div>
+{% endif %}

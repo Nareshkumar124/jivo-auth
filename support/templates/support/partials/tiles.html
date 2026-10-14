@@ -1,0 +1,11 @@
+{% load support_tags %}
+{# tiles: [{label, value, icon, url, note, tone}] #}
+<section class="tiles{% if six %} tiles--six{% endif %}" aria-label="{{ label|default:'Ticket counts' }}">
+  {% for tile in tiles %}
+    <a class="tile{% if tile.tone %} tile--{{ tile.tone }}{% endif %}" href="{{ tile.url }}">
+      <span class="tile__label">{% icon tile.icon 16 %}{{ tile.label }}</span>
+      <span class="tile__value">{{ tile.value|compact }}</span>
+      {% if tile.note %}<span class="tile__note">{{ tile.note }}</span>{% endif %}
+    </a>
+  {% endfor %}
+</section>

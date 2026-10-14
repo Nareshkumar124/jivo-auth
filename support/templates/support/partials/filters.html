@@ -1,0 +1,11 @@
+{% load support_tags %}
+{# form: TicketFilterForm (GET). #}
+<form method="get" class="filters" role="search">
+  <label class="filters__search">{% icon "search" 16 %}<span class="visually-hidden">Search</span>{{ form.q }}</label>
+  <label class="visually-hidden" for="{{ form.status.id_for_label }}">Status</label>{{ form.status }}
+  <label class="visually-hidden" for="{{ form.priority.id_for_label }}">Priority</label>{{ form.priority }}
+  <label class="visually-hidden" for="{{ form.application.id_for_label }}">Application</label>{{ form.application }}
+  <label class="visually-hidden" for="{{ form.sort.id_for_label }}">Sort</label>{{ form.sort }}
+  <button type="submit" class="button">{% icon "filter" 15 %}Apply</button>
+  {% if is_filtered %}<a class="button button--ghost" href="{{ request.path }}">{% icon "x" 15 %}Clear</a>{% endif %}
+</form>

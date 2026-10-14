@@ -1,0 +1,50 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{{ back }}">All tickets</a></li><li aria-current="page">{{ title }}</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>{{ title }}</h1><p class="page-head__sub">{{ count }} ticket{{ count|pluralize }} selected. Each one is changed through the usual workflow: it's recorded in its history and the people involved are told.</p></div></div>
+{% endblock %}
+
+{% block content %}
+<form method="post" action="{% url 'support:manage-bulk' %}" class="card form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="{{ action }}">
+  <input type="hidden" name="confirm" value="yes">
+  <input type="hidden" name="back" value="{{ back }}">
+  {% for ticket in tickets %}<input type="hidden" name="tickets" value="{{ ticket.pk }}">{% endfor %}
+
+  <ul class="bulk-list">
+    {% for ticket in tickets %}<li><span class="tickets__ref">{{ ticket.reference }}</span>{{ ticket.subject }} <span class="muted">· {{ ticket.get_status_display }}{% if ticket.team %} · {{ ticket.team.name }}{% endif %}</span></li>{% endfor %}
+  </ul>
+
+  {% if action == "assign" %}
+    {% include "support/partials/field.html" with field=form.assignee %}
+    <p class="field__help" style="margin-top: -12px">Tickets of other teams than this person's are skipped.</p>
+    {% include "support/partials/field.html" with field=form.note %}
+  {% elif action == "priority" %}
+    {% include "support/partials/field.html" with field=form.priority %}
+    <p class="field__help" style="margin-top: -12px">SLA deadlines are recomputed from the new priority.</p>
+  {% elif action == "status" %}
+    {% include "support/partials/field.html" with field=form.status %}
+    {% include "support/partials/field.html" with field=form.note %}
+    <p class="field__help" style="margin-top: -12px">Resolve tickets from their page, with a resolution summary.</p>
+  {% elif action == "team" %}
+    {% include "support/partials/field.html" with field=form.team %}
+    {% include "support/partials/field.html" with field=form.note %}
+    <p class="field__help" style="margin-top: -12px">Assignees who aren't in the new team are taken off the tickets.</p>
+  {% elif action == "close" %}
+    {% include "support/partials/field.html" with field=form.note %}
+    <div class="callout callout--warning">{% icon "alert" 16 %}<p>The people who raised them are told the tickets are closed. Closed tickets can be reopened.</p></div>
+  {% elif action == "reopen" %}
+    {% include "support/partials/field.html" with field=form.note %}
+    <p class="field__help" style="margin-top: -12px">Only resolved or closed tickets are reopened; the rest are skipped.</p>
+  {% endif %}
+
+  <div class="form__actions">
+    <button type="submit" class="button {% if action == 'close' %}button--danger{% else %}button--primary{% endif %}">{{ title }}</button>
+    <a class="button button--ghost" href="{{ back }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

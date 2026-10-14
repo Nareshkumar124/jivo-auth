@@ -1,0 +1,24 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>{{ title }}</h1><p class="page-head__sub">{{ blurb }} {{ page.paginator.count }} ticket{{ page.paginator.count|pluralize }}.</p></div></div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  {% include "support/partials/filters.html" %}
+  {% if page.object_list %}
+    {% include "support/partials/ticket_table.html" with tickets=page.object_list show_team=True show_assignee=True show_creator=True %}
+    {% include "support/partials/pagination.html" %}
+  {% elif is_filtered %}
+    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><a class="button" href="{{ request.path }}">Clear filters</a></div>
+  {% elif preset == "available" %}
+    {% include "support/partials/empty.html" with icon_name="check" heading="Nothing to claim" message="Every active ticket of your teams has an owner." tone="good" %}
+  {% elif preset == "mine" %}
+    {% include "support/partials/empty.html" with icon_name="user-check" heading="Nothing assigned to you" message="Claim a ticket from the available list to start working on it." %}
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="inbox" heading="No tickets here" message="Tickets routed to your teams appear here." %}
+  {% endif %}
+</section>
+{% endblock %}

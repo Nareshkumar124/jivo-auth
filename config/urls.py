@@ -41,6 +41,9 @@ urlpatterns = [
     # Server-to-server endpoints for applications
     path("api/v1/apps/",include("applications.urls"),),
 
+    # Support tickets: JSON API for applications
+    path("api/v1/support/", include("support.api_urls")),
+
     # Public keys that verify issued tokens
     path(".well-known/jwks.json",JWKSView.as_view(),name="jwks",),
 
@@ -55,4 +58,7 @@ urlpatterns = [
     path("api/docs/",SpectacularSwaggerView.as_view(url_name="schema",),name="swagger-ui",),
     path("api/redoc/",SpectacularRedocView.as_view(url_name="schema"),name="redoc",),
 
+    # The ticket system: sign-in at /, the dashboard, tickets, team work and
+    # ticket administration (/manage/). Last, so it never shadows a route above.
+    path("", include("support.urls")),
 ]

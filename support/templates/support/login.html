@@ -1,0 +1,29 @@
+{% extends "support/auth_base.html" %}
+
+{% block content %}
+  <h1>Sign in</h1>
+  <p class="lead">Use your Jivo account to raise a ticket, follow your tickets or work your team's queue.</p>
+
+  {% if form.non_field_errors %}
+    <div class="callout callout--critical" role="alert">
+      <div>{% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}</div>
+    </div>
+  {% elif form.errors %}
+    <div class="callout callout--critical" role="alert"><p>Enter your email and password.</p></div>
+  {% endif %}
+
+  <form method="post" action="{{ action }}" novalidate>
+    {% csrf_token %}
+    <div class="field{% if form.username.errors %} has-error{% endif %}">
+      <label for="{{ form.username.id_for_label }}">Email</label>
+      {{ form.username }}
+    </div>
+    <div class="field{% if form.password.errors %} has-error{% endif %}">
+      <label for="{{ form.password.id_for_label }}">Password</label>
+      {{ form.password }}
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <p class="auth-card__links"><a href="{% url 'forgot-password-page' %}">Forgot your password?</a></p>
+    <button type="submit" class="button button--primary">Sign in</button>
+  </form>
+{% endblock %}

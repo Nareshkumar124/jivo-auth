@@ -1,0 +1,193 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}
+  <ol class="breadcrumbs">
+    {% if is_support_admin %}<li><a href="{% url 'support:manage-tickets' %}">All tickets</a></li>
+    {% elif can.handle %}<li><a href="{% url 'support:team-tickets' 'all' %}">Team tickets</a></li>
+    {% else %}<li><a href="{% url 'support:my-tickets' %}">My tickets</a></li>{% endif %}
+    <li aria-current="page">{{ ticket.reference }}</li>
+  </ol>
+{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <p class="ticket-ref">{{ ticket.reference }} <span class="chips">{% status_badge ticket %}{% priority_badge ticket %}{% due_badge ticket now %}{% if ticket.reopen_count %}{% badge "reopened" "neutral" %}{% endif %}</span></p>
+      <h1>{{ ticket.subject }}</h1>
+      <p class="page-head__sub">{{ ticket.application.name }} · {{ ticket.department.name }} · raised by <strong>{{ ticket.created_by|person }}</strong> <time datetime="{{ ticket.created_at|date:'c' }}" title="{{ ticket.created_at|date:'Y-m-d H:i T' }}">{{ ticket.created_at|timesince }} ago</time></p>
+    </div>
+    <div class="page-head__actions">
+      {% if can.claim %}
+        <form method="post" action="{% url 'support:ticket-claim' ticket.pk %}" class="inline-form">{% csrf_token %}<button type="submit" class="button button--primary">{% icon "user-check" 16 %}Claim ticket</button></form>
+      {% endif %}
+      {% if can.reopen %}<a class="button" href="#reopen">{% icon "rotate" 16 %}Reopen</a>{% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="ticket">
+  <div class="ticket__main">
+    {% if ticket.status == "waiting" and is_creator %}
+      <div class="callout callout--warning">{% icon "help" 16 %}<p>The team needs more information from you. Reply below so they can continue.</p></div>
+    {% elif ticket.status == "resolved" and is_creator %}
+      <div class="callout callout--good">{% icon "check-circle" 16 %}<p>This ticket is resolved. If everything works now, close it; if not, reopen it and say what is still wrong.</p></div>
+    {% elif ticket.status == "closed" %}
+      <div class="callout callout--info">{% icon "archive" 16 %}<p>This ticket is closed.{% if can.reopen %} Reopen it to continue the conversation.{% endif %}</p></div>
+    {% elif not ticket.team and can.handle %}
+      <div class="callout callout--warning">{% icon "alert" 16 %}<p>No team is responsible for this ticket yet.{% if can.team %} Pick one under Actions.{% endif %}</p></div>
+    {% endif %}
+
+    <section class="card msg" aria-label="Description">
+      <header class="msg__head">
+        <span class="avatar" aria-hidden="true">{{ ticket.created_by|initials_of }}</span>
+        <div><strong>{{ ticket.created_by|person }}</strong><span class="muted">reported <time datetime="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:"j M Y, H:i" }}</time></span></div>
+      </header>
+      <div class="msg__body">{{ ticket.description|urlize|linebreaks }}</div>
+      {% if attachments %}{% include "support/partials/attachments.html" with files=attachments %}{% endif %}
+    </section>
+
+    {% if ticket.resolution %}
+      <section class="card resolution" aria-labelledby="resolution-title">
+        <h2 class="card__title" id="resolution-title" style="margin-bottom: 8px">{% icon "check-circle" 16 %}{% if ticket.is_done %}Resolution{% else %}Previous resolution{% endif %}</h2>
+        <div class="msg__body">{{ ticket.resolution|urlize|linebreaks }}</div>
+        {% if ticket.resolved_by %}<p class="muted">by {{ ticket.resolved_by|person }}{% if ticket.resolved_at %}, <time datetime="{{ ticket.resolved_at|date:'c' }}">{{ ticket.resolved_at|date:"j M Y, H:i" }}</time>{% endif %}</p>{% endif %}
+      </section>
+    {% endif %}
+
+    <h2 class="section-title" id="conversation">Conversation <span class="muted">({{ comments|length }})</span></h2>
+    {% for comment in comments %}
+      <article class="card msg{% if comment.is_internal %} msg--internal{% endif %}{% if comment.is_info_request %} msg--request{% endif %}" id="comment-{{ comment.pk }}">
+        <header class="msg__head">
+          <span class="avatar" aria-hidden="true">{{ comment.author|initials_of }}</span>
+          <div>
+            <strong>{{ comment.author|person }}</strong>
+            {% if comment.author_id == ticket.created_by_id %}{% badge "raised the ticket" "neutral" %}{% endif %}
+            <span class="muted"><time datetime="{{ comment.created_at|date:'c' }}" title="{{ comment.created_at|date:'Y-m-d H:i T' }}">{{ comment.created_at|timesince }} ago</time></span>
+          </div>
+          {% if comment.is_internal %}<span class="badge badge--warning">{% icon "eye-off" 12 %}Internal note</span>{% elif comment.is_info_request %}<span class="badge badge--info">{% icon "help" 12 %}Information requested</span>{% endif %}
+        </header>
+        <div class="msg__body">{{ comment.body|urlize|linebreaks }}</div>
+        {% if comment.attachments.all %}{% include "support/partials/attachments.html" with files=comment.attachments.all %}{% endif %}
+      </article>
+    {% empty %}
+      <p class="muted">No replies yet.</p>
+    {% endfor %}
+
+    {% if can.comment %}
+      <form method="post" action="{% url 'support:ticket-comment' ticket.pk %}" enctype="multipart/form-data" class="card reply" id="reply" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reply" data-reply-action>
+        <div class="field">
+          <label for="{{ forms.comment.body.id_for_label }}">{% if can.handle %}Reply or add a note{% else %}Reply{% endif %}</label>
+          {{ forms.comment.body }}
+        </div>
+        <div class="field">
+          <div class="upload" data-upload>
+            {{ forms.comment.attachments }}
+            <span class="upload__hint">{% icon "paperclip" 15 %}<span data-upload-label>Attach files</span></span>
+            <ul class="upload__list" data-upload-list hidden></ul>
+          </div>
+        </div>
+        <div class="form__actions">
+          <button type="submit" class="button button--primary" data-set-action="reply">{% icon "send" 15 %}Send reply</button>
+          {% if can.internal %}<button type="submit" class="button" data-set-action="note">{% icon "eye-off" 15 %}Add internal note</button>{% endif %}
+          {% if can.request_info %}<button type="submit" class="button" data-set-action="request_info">{% icon "help" 15 %}Request information</button>{% endif %}
+        </div>
+        {% if can.internal %}<p class="field__help">Replies are seen by the person who raised the ticket. Internal notes are seen only by the team and administrators. Requesting information sets the ticket to “waiting”.</p>{% endif %}
+      </form>
+    {% endif %}
+  </div>
+
+  <aside class="ticket__side">
+    <section class="card" aria-labelledby="details-title">
+      <h2 class="card__title" id="details-title" style="margin-bottom: 12px">Details</h2>
+      <dl class="props">
+        <div><dt>Status</dt><dd>{% status_badge ticket %}</dd></div>
+        <div><dt>Priority</dt><dd>{% priority_badge ticket %}</dd></div>
+        <div><dt>Department</dt><dd>{{ ticket.department.name }}</dd></div>
+        <div><dt>Application</dt><dd>{{ ticket.application.name }}</dd></div>
+        <div><dt>Team</dt><dd>{% if ticket.team %}{{ ticket.team.name }}{% else %}{% badge "None yet" "warning" %}{% endif %}</dd></div>
+        <div><dt>Assigned to</dt><dd>{% if ticket.assignee %}{{ ticket.assignee|person }}{% elif ticket.is_active %}{% badge "Unassigned" "warning" %}{% else %}<span class="muted">—</span>{% endif %}</dd></div>
+        <div><dt>Raised by</dt><dd>{{ ticket.created_by|person }}</dd></div>
+        <div><dt>Raised</dt><dd><time datetime="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:"j M Y, H:i" }}</time></dd></div>
+        <div><dt>Updated</dt><dd><time datetime="{{ ticket.updated_at|date:'c' }}">{{ ticket.updated_at|date:"j M Y, H:i" }}</time></dd></div>
+        {% if ticket.is_active %}
+          {% if ticket.response_due_at and not ticket.first_response_at %}<div><dt>First response due</dt><dd{% if overdue == "response" %} class="text-critical"{% endif %}>{{ ticket.response_due_at|date:"j M Y, H:i" }}</dd></div>{% endif %}
+          {% if ticket.resolve_due_at %}<div><dt>Resolution due</dt><dd{% if overdue == "resolution" %} class="text-critical"{% endif %}>{{ ticket.resolve_due_at|date:"j M Y, H:i" }}</dd></div>{% endif %}
+        {% endif %}
+        {% if ticket.first_response_at %}<div><dt>First response</dt><dd>{{ ticket.first_response_at|date:"j M Y, H:i" }}</dd></div>{% endif %}
+        {% if ticket.resolved_at %}<div><dt>Resolved</dt><dd>{{ ticket.resolved_at|date:"j M Y, H:i" }}</dd></div>{% endif %}
+        {% if ticket.closed_at %}<div><dt>Closed</dt><dd>{{ ticket.closed_at|date:"j M Y, H:i" }}</dd></div>{% endif %}
+      </dl>
+    </section>
+
+    {% if can.assign or can.status or can.priority or can.team or can.resolve or can.close or can.reopen %}
+    <section class="card actions" aria-labelledby="actions-title">
+      <h2 class="card__title" id="actions-title" style="margin-bottom: 12px">Actions</h2>
+      {% if can.assign %}
+        <form method="post" action="{% url 'support:ticket-assign' ticket.pk %}" class="actions__form">{% csrf_token %}
+          <label for="{{ forms.assign.assignee.id_for_label }}">Assign to</label>
+          <div class="actions__row">{{ forms.assign.assignee }}<button type="submit" class="button">Assign</button></div>
+        </form>
+      {% endif %}
+      {% if can.status %}
+        <form method="post" action="{% url 'support:ticket-status' ticket.pk %}" class="actions__form">{% csrf_token %}
+          <label for="{{ forms.status.status.id_for_label }}">Status</label>
+          <div class="actions__row">{{ forms.status.status }}<button type="submit" class="button">Set</button></div>
+        </form>
+      {% endif %}
+      {% if can.priority %}
+        <form method="post" action="{% url 'support:ticket-priority' ticket.pk %}" class="actions__form">{% csrf_token %}
+          <label for="{{ forms.priority.priority.id_for_label }}">Priority</label>
+          <div class="actions__row">{{ forms.priority.priority }}<button type="submit" class="button">Set</button></div>
+        </form>
+      {% endif %}
+      {% if can.team %}
+        <form method="post" action="{% url 'support:ticket-team' ticket.pk %}" class="actions__form">{% csrf_token %}
+          <label for="{{ forms.team.team.id_for_label }}">Responsible team</label>
+          <div class="actions__row">{{ forms.team.team }}<button type="submit" class="button">Move</button></div>
+        </form>
+      {% endif %}
+      {% if can.resolve %}
+        <details class="actions__details" id="resolve">
+          <summary>{% icon "check-circle" 15 %}Resolve ticket</summary>
+          <form method="post" action="{% url 'support:ticket-resolve' ticket.pk %}" class="actions__form">{% csrf_token %}
+            <label for="{{ forms.resolve.resolution.id_for_label }}">{{ forms.resolve.resolution.label }}</label>
+            {{ forms.resolve.resolution }}
+            <button type="submit" class="button button--primary">Mark as resolved</button>
+          </form>
+        </details>
+      {% endif %}
+      {% if can.close %}
+        <details class="actions__details" id="close">
+          <summary>{% icon "archive" 15 %}Close ticket</summary>
+          <form method="post" action="{% url 'support:ticket-close' ticket.pk %}" class="actions__form">{% csrf_token %}
+            <label for="{{ forms.close.note.id_for_label }}">{{ forms.close.note.label }}</label>
+            {{ forms.close.note }}
+            <button type="submit" class="button">Close ticket</button>
+          </form>
+        </details>
+      {% endif %}
+      {% if can.reopen %}
+        <details class="actions__details" id="reopen">
+          <summary>{% icon "rotate" 15 %}Reopen ticket</summary>
+          <form method="post" action="{% url 'support:ticket-reopen' ticket.pk %}" class="actions__form">{% csrf_token %}
+            <label for="{{ forms.reopen.reason.id_for_label }}">{{ forms.reopen.reason.label }}</label>
+            {{ forms.reopen.reason }}
+            <button type="submit" class="button button--primary">Reopen</button>
+          </form>
+        </details>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card" aria-labelledby="history-title">
+      <h2 class="card__title" id="history-title" style="margin-bottom: 12px">History</h2>
+      {% include "support/partials/timeline.html" with events=events %}
+      {% if is_support_admin %}<a class="card__link" href="{% url 'support:manage-activity' %}?q={{ ticket.reference }}">Full activity history</a>{% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

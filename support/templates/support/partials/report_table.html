@@ -1,0 +1,10 @@
+{# rows: grouped() rows; bars: optional bar_list. #}
+{% if rows %}
+  {% if bars %}{% include "support/partials/bar_list.html" with bars=bars %}{% endif %}
+  <div class="table-wrap"{% if bars %} style="margin-top: 16px"{% endif %}><table class="table table--compact">
+    <thead><tr><th scope="col">Name</th><th scope="col" class="num">Raised</th><th scope="col" class="num">Active</th><th scope="col" class="num">Resolved or closed</th></tr></thead>
+    <tbody>{% for row in rows %}<tr><td>{{ row.label }}</td><td class="num">{{ row.total }}</td><td class="num">{{ row.active }}</td><td class="num">{{ row.resolved }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+{% else %}
+  {% include "support/partials/empty.html" with icon_name="inbox" message="No tickets in this range." %}
+{% endif %}

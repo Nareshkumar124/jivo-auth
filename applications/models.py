@@ -64,6 +64,37 @@ class Application(models.Model):
         help_text="Users who may use this application.",
     )
 
+    # Support routing: Department -> Application -> Team (support app).
+    department = models.ForeignKey(
+        "support.Department",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="applications",
+        help_text="The department users pick on the support form to find this application.",
+    )
+
+    support_team = models.ForeignKey(
+        "support.Team",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="applications",
+        verbose_name="responsible team",
+        help_text=(
+            "New support tickets for this application go to this team. "
+            "Existing tickets keep their team."
+        ),
+    )
+
+    # Managed in the ticket system; independent of is_active, which decides
+    # whether the application is in users' tokens.
+    tickets_enabled = models.BooleanField(
+        default=True,
+        verbose_name="accepts tickets",
+        help_text="Whether users can pick this application on a new ticket.",
+    )
+
     api_key_hash = models.CharField(
         max_length=64,
         unique=True,

@@ -10,6 +10,7 @@ all other Jivo applications trust.
 | Add Jivo login to a server-rendered Django site or the Django admin | [Integrating a Django application](integrate-django.md#b-server-rendered-django-site-templates-admin) |
 | Register a new application and give users access to it | [Registering an application](register-an-application.md) |
 | Move an application that already has its own users onto Jivo Auth | [Moving an existing application](integrate-django.md#moving-an-existing-application-onto-jivo-auth), or the Claude Code skill [`integrate-jivo-auth`](../skills/integrate-jivo-auth/SKILL.md) |
+| Raise or handle a support ticket, or set up departments and teams | [Support tickets](support-tickets.md) (the ticket system is at https://auth.jivo.in/) |
 | Run or configure auth.jivo.in itself | [Running auth.jivo.in](deploy-auth-service.md) |
 | Look up an endpoint | [API reference (Swagger)](https://auth.jivo.in/api/docs/) |
 

@@ -1,0 +1,18 @@
+{% load support_tags %}
+{# files: TicketAttachment objects. #}
+<ul class="files">
+  {% for file in files %}
+    <li class="files__item">
+      {% if file.is_image %}
+        <a class="files__thumb" href="{{ file.get_absolute_url }}" target="_blank" rel="noopener"><img src="{{ file.get_absolute_url }}" alt="{{ file.original_name }}" loading="lazy"></a>
+      {% else %}
+        <span class="files__icon">{% icon "file" 18 %}</span>
+      {% endif %}
+      <span class="files__text">
+        <a href="{{ file.get_absolute_url }}"{% if not file.is_image %} download{% endif %}>{{ file.original_name }}</a>
+        <span class="muted">{{ file.size|human_size }}{% if file.is_internal %} · internal{% endif %}</span>
+      </span>
+      <a class="files__download" href="{{ file.get_absolute_url }}" download aria-label="Download {{ file.original_name }}">{% icon "download" 15 %}</a>
+    </li>
+  {% endfor %}
+</ul>

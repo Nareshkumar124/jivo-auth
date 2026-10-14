@@ -1,0 +1,17 @@
+{% extends "support/base.html" %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'support:manage-teams' %}">Teams and members</a></li><li aria-current="page">New team</li></ol>{% endblock %}
+
+{% block page_head %}<div class="page-head"><div><h1>New team</h1><p class="page-head__sub">You add members once the team exists.</p></div></div>{% endblock %}
+
+{% block content %}
+<form method="post" class="card form form--narrow" novalidate>
+  {% csrf_token %}
+  {% include "support/partials/form_errors.html" %}
+  {% for field in form %}{% include "support/partials/field.html" %}{% endfor %}
+  <div class="form__actions">
+    <button type="submit" class="button button--primary">Create team</button>
+    <a class="button button--ghost" href="{% url 'support:manage-teams' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

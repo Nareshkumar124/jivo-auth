@@ -1,0 +1,16 @@
+{% load support_tags %}
+{# page: a Paginator page. Keeps the other query parameters. #}
+{% if page.paginator.num_pages > 1 %}
+  <nav class="pagination" aria-label="Pages">
+    <span>{{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}</span>
+    <span class="pagination__links">
+      {% if page.has_previous %}<a class="button button--ghost button--small" href="{% query page=page.previous_page_number %}">Previous</a>{% endif %}
+      {% for number in page.paginator.get_elided_page_range %}
+        {% if number == page.paginator.ELLIPSIS %}<span>…</span>
+        {% elif number == page.number %}<span class="pagination__current" aria-current="page">{{ number }}</span>
+        {% else %}<a class="pagination__page" href="{% query page=number %}">{{ number }}</a>{% endif %}
+      {% endfor %}
+      {% if page.has_next %}<a class="button button--ghost button--small" href="{% query page=page.next_page_number %}">Next</a>{% endif %}
+    </span>
+  </nav>
+{% endif %}

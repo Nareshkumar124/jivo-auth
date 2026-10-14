@@ -45,6 +45,10 @@ RUN DEBUG=True JWT_ALGORITHM=HS256 \
     JWT_SECRET_KEY=collectstatic-only-not-a-real-secret \
     python manage.py collectstatic --noinput --verbosity 0
 
+# Mount point of the attachments volume (docker-compose.yml). Owned by the
+# image's user, so uploads also work when it runs without the volume.
+RUN mkdir -p /app/media && chown app:app /app/media
+
 USER app
 
 EXPOSE 8000

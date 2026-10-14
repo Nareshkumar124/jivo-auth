@@ -1,0 +1,55 @@
+{% extends "support/base.html" %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>Settings</h1><p class="page-head__sub">How the ticket workflow behaves for everyone.</p></div></div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="card form" novalidate>
+  {% csrf_token %}
+  {% include "support/partials/form_errors.html" %}
+
+  <fieldset class="fieldset">
+    <legend>SLA deadlines</legend>
+    <p class="fieldset__help">Set when a ticket is raised or reopened, and recomputed when its priority changes. Calendar hours; 0 means no deadline.</p>
+    <div class="form__row">
+      {% include "support/partials/field.html" with field=form.response_hours_urgent %}
+      {% include "support/partials/field.html" with field=form.resolution_hours_urgent %}
+      {% include "support/partials/field.html" with field=form.response_hours_high %}
+      {% include "support/partials/field.html" with field=form.resolution_hours_high %}
+      {% include "support/partials/field.html" with field=form.response_hours_medium %}
+      {% include "support/partials/field.html" with field=form.resolution_hours_medium %}
+      {% include "support/partials/field.html" with field=form.response_hours_low %}
+      {% include "support/partials/field.html" with field=form.resolution_hours_low %}
+    </div>
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Team permissions</legend>
+    {% include "support/partials/field.html" with field=form.members_can_assign %}
+    {% include "support/partials/field.html" with field=form.members_can_change_priority %}
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Users</legend>
+    {% include "support/partials/field.html" with field=form.users_can_reopen %}
+    <div class="form__row">
+      {% include "support/partials/field.html" with field=form.reopen_window_days %}
+      {% include "support/partials/field.html" with field=form.auto_close_after_days %}
+    </div>
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Attachments</legend>
+    {% include "support/partials/field.html" with field=form.max_attachment_mb %}
+    {% include "support/partials/field.html" with field=form.allowed_extensions %}
+  </fieldset>
+
+  <fieldset class="fieldset">
+    <legend>Notifications</legend>
+    {% include "support/partials/field.html" with field=form.notify_team_on_new_ticket %}
+  </fieldset>
+
+  <button type="submit" class="button button--primary">Save settings</button>
+</form>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% load support_tags %}
+{# rows: choice_breakdown() rows. #}
+<table class="table table--compact">
+  <tbody>
+    {% for row in rows %}
+      <tr>
+        <th scope="row">{% if kind == "status" %}{% status_badge row.value %}{% else %}{% priority_badge row.value %}{% endif %}</th>
+        <td class="share__bar"><span class="share__fill" style="width: {{ row.share|floatformat:1 }}%"></span></td>
+        <td class="num">{{ row.count }}</td>
+        <td class="num muted">{{ row.share|floatformat:0 }}%</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,37 @@
+{% load support_tags %}
+{# tickets; show_team / show_assignee / show_creator add columns; selectable adds bulk checkboxes (form="bulk-form"). #}
+<div class="table-wrap">
+<table class="table tickets">
+  <thead>
+    <tr>
+      {% if selectable %}<th scope="col" class="check-col"><input type="checkbox" form="bulk-form" data-select-all aria-label="Select all tickets on this page"></th>{% endif %}
+      <th scope="col">Ticket</th>
+      <th scope="col">Application</th>
+      {% if show_team %}<th scope="col">Team</th>{% endif %}
+      {% if show_assignee %}<th scope="col">Assigned to</th>{% endif %}
+      {% if show_creator %}<th scope="col">Raised by</th>{% endif %}
+      <th scope="col">Priority</th>
+      <th scope="col">Status</th>
+      <th scope="col">Updated</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ticket in tickets %}
+      <tr{% if ticket.is_overdue %} class="is-overdue"{% endif %}>
+        {% if selectable %}<td class="check-col"><input type="checkbox" form="bulk-form" name="tickets" value="{{ ticket.pk }}" aria-label="Select {{ ticket.reference }}"></td>{% endif %}
+        <td class="tickets__main">
+          <a class="tickets__link" href="{{ ticket.get_absolute_url }}"><span class="tickets__ref">{{ ticket.reference }}</span><span class="tickets__subject">{{ ticket.subject }}</span></a>
+          <span class="tickets__meta">raised <time datetime="{{ ticket.created_at|date:'c' }}" title="{{ ticket.created_at|date:'Y-m-d H:i T' }}">{{ ticket.created_at|timesince }} ago</time>{% if ticket.reopen_count %} · reopened{% endif %}</span>
+        </td>
+        <td>{{ ticket.application.name }}<br><span class="muted">{{ ticket.department.name }}</span></td>
+        {% if show_team %}<td>{% if ticket.team %}{{ ticket.team.name }}{% else %}{% badge "No team" "warning" %}{% endif %}</td>{% endif %}
+        {% if show_assignee %}<td>{% if ticket.assignee %}{{ ticket.assignee|person }}{% elif ticket.is_active %}{% badge "Unassigned" "warning" %}{% else %}<span class="muted">—</span>{% endif %}</td>{% endif %}
+        {% if show_creator %}<td>{{ ticket.created_by|person }}</td>{% endif %}
+        <td>{% priority_badge ticket %}</td>
+        <td><span class="chips">{% status_badge ticket %}{% due_badge ticket now %}</span></td>
+        <td><time datetime="{{ ticket.updated_at|date:'c' }}" title="{{ ticket.updated_at|date:'Y-m-d H:i T' }}">{{ ticket.updated_at|timesince }} ago</time></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

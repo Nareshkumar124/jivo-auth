@@ -1,0 +1,17 @@
+{% extends "support/auth_base.html" %}
+{% load support_tags %}
+
+{% block title %}Not allowed · Jivo Support{% endblock %}
+
+{% block content %}
+  <div class="empty">
+    <span class="empty__icon">{% icon "lock" 22 %}</span>
+    <h1>You can't open this page</h1>
+    <p>Your account doesn't have the role this page needs. If you think it should, ask an administrator.</p>
+    {% if request.path|slice:":7" == "/admin/" %}
+      <a class="button" href="/admin/">Back to the admin panel</a>
+    {% else %}
+      <a class="button" href="/">Back to the dashboard</a>
+    {% endif %}
+  </div>
+{% endblock %}

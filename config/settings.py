@@ -118,6 +118,7 @@ INSTALLED_APPS = [
     "applications",
     "authentication",
     "audit",
+    "support",
 ]
 
 MIDDLEWARE = [
@@ -233,6 +234,12 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
+
+# Uploaded files (support ticket attachments). Never served as static
+# files: the support portal streams them after checking who may see them.
+# In Docker this is the mounted /app/media volume.
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT") or BASE_DIR / "media")
+MEDIA_URL = ""
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -430,6 +437,10 @@ REST_FRAMEWORK = {
         "verify_email": "10/min",
         "resend_verification": "3/min",
         "application": "10000/hour",
+
+        # Support portal, per signed-in user.
+        "support_ticket": "20/hour",
+        "support_comment": "120/hour",
     },
 
     # Number of trusted reverse proxies (e.g. 1 behind Nginx). Throttles and
@@ -597,6 +608,14 @@ have stricter limits, noted on each operation. Throttled requests get `429`.
             "description": (
                 "Server-to-server endpoints for Jivo applications, "
                 "authenticated with the application's API key."
+            ),
+        },
+        {
+            "name": "Support",
+            "description": (
+                "Support tickets: report a problem with an application and "
+                "follow its progress. The full workflow (claiming, assigning, "
+                "resolving) is in the ticket system at `/`."
             ),
         },
         {

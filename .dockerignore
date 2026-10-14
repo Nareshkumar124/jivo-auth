@@ -25,3 +25,6 @@ packages/jivo-auth-client/tests/
 # Deployment notes and target, not needed in the image
 DEPLOYMENT.md
 deploy.env
+
+# Attachments are a mounted volume, never part of the image
+media/

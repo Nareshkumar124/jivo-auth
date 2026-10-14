@@ -1,0 +1,49 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'support:manage-departments' %}">Departments</a></li><li aria-current="page">{{ title }}</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>{{ title }}</h1>{% if department %}<p class="page-head__sub">{{ counts.pending }} pending of {{ counts.total }} ticket{{ counts.total|pluralize }}.</p>{% endif %}</div>
+    {% if department %}<div class="page-head__actions"><a class="button" href="{% url 'support:manage-application-create' %}?department={{ department.pk }}">{% icon "plus" 16 %}Add an application</a></div>{% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<form method="post" class="card form form--narrow" novalidate>
+  {% csrf_token %}
+  {% include "support/partials/form_errors.html" %}
+  {% include "support/partials/field.html" with field=form.name %}
+  {% include "support/partials/field.html" with field=form.description %}
+  {% include "support/partials/field.html" with field=form.default_team %}
+  {% include "support/partials/field.html" with field=form.is_active %}
+  <div class="form__actions">
+    <button type="submit" class="button button--primary">{% if department %}Save{% else %}Create department{% endif %}</button>
+    <a class="button button--ghost" href="{% url 'support:manage-departments' %}">Cancel</a>
+  </div>
+</form>
+
+{% if department %}
+<section class="card card--flush" aria-labelledby="apps-title">
+  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications in {{ department.name }}</h2><p class="card__sub">Change an application's responsible team from its page.</p></div></header>
+  {% if applications %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th scope="col">Application</th><th scope="col">Responsible team</th><th scope="col">Tickets</th><th scope="col" class="num">Pending</th></tr></thead>
+      <tbody>
+        {% for app in applications %}
+          <tr>
+            <td><a href="{% url 'support:manage-application' app.pk %}">{{ app.name }}</a> <code class="muted">{{ app.slug }}</code></td>
+            <td>{% if app.support_team %}{{ app.support_team.name }}{% elif department.default_team %}<span class="muted">{{ department.default_team.name }} (default)</span>{% else %}{% badge "No team" "warning" %}{% endif %}</td>
+            <td>{% if app.tickets_enabled %}{% badge "Accepted" "good" %}{% else %}{% badge "Off" "neutral" %}{% endif %}</td>
+            <td class="num">{{ app.pending }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="grid" message="No applications in this department yet." %}
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

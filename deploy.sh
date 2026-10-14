@@ -12,7 +12,8 @@
 #
 # What a deploy does, in order (docs/deploy-auth-service.md has the details):
 #   1. rsync the working tree to the server. .env, *.pem and other secrets are
-#      never sent, and never deleted on the server.
+#      never sent, and never deleted on the server; nor is media/ (uploaded
+#      support ticket attachments).
 #   2. Tag the running image jivo-auth:previous, then `docker compose build`.
 #   3. Pre-flight with the new image before switching: `check --deploy` and
 #      `migrate --plan`. Failure leaves the running container untouched.
@@ -32,6 +33,7 @@ RSYNC_EXCLUDES=(
     --exclude='staticfiles/' --exclude='.claude/' --exclude='.idea/'
     --exclude='.vscode/' --exclude='.coverage' --exclude='htmlcov/'
     --exclude='.DS_Store' --exclude='.deploy-history' --exclude='deploy.env'
+    --exclude='media/'
 )
 
 mode=deploy
@@ -166,6 +168,9 @@ EOF
 read -r -d '' REMOTE_DEPLOY <<'EOF' || true
 [ -f .env ] || { echo "ABORT: $DEPLOY_DIR/.env is missing"; exit 1; }
 [ -e jwt_private.pem ] || { echo "ABORT: $DEPLOY_DIR/jwt_private.pem is missing"; exit 1; }
+# The attachments volume. Docker would create a missing one owned by root,
+# which the container's user can't write to.
+[ -d media ] || { echo "ABORT: $DEPLOY_DIR/media is missing: mkdir media && sudo chown 10001:10001 media (or APP_UID:APP_GID)"; exit 1; }
 chmod 750 .
 
 restore_latest() {

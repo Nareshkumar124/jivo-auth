@@ -20,9 +20,14 @@ services:
       GUNICORN_BIND: ${GUNICORN_BIND:-127.0.0.1:8000}
       # The signing key is mounted as a secret, never baked into the image.
       JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      # Support ticket attachments live on the host (./media), outside the image.
+      MEDIA_ROOT: /app/media
+    volumes:
+      - ./media:/app/media
     # A mounted secret keeps its file permissions, so run as a user who can
     # read the key: APP_UID/APP_GID in .env (the key owner's `id -u`/`id -g`),
     # or the image's own user 10001 after `sudo chown 10001 jwt_private.pem`.
+    # The same user must be able to write ./media (attachments).
     user: "${APP_UID:-10001}:${APP_GID:-10001}"
     secrets:
       - jwt_private_key

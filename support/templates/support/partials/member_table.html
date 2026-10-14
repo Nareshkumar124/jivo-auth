@@ -1,0 +1,21 @@
+{% load support_tags %}
+{# members: dashboard.member_workload() rows. #}
+{% if members %}
+<div class="table-wrap"><table class="table">
+  <thead><tr><th scope="col">Member</th><th scope="col">Team</th><th scope="col">Role</th><th scope="col" class="num">Active</th><th scope="col" class="num">Waiting</th><th scope="col" class="num">Resolved</th></tr></thead>
+  <tbody>
+    {% for row in members %}
+      <tr{% if row.user.pk == user.pk %} class="is-me"{% elif not row.user.is_active %} class="is-inactive"{% endif %}>
+        <td>{{ row.user|person }}{% if row.user.pk == user.pk %} <span class="muted">(you)</span>{% endif %}<br><span class="muted">{{ row.user.email }}</span></td>
+        <td>{{ row.team.name }}</td>
+        <td>{% if row.membership.role == "manager" %}{% badge "Team manager" "accent" %}{% else %}Member{% endif %}</td>
+        <td class="num">{{ row.active }}</td>
+        <td class="num">{{ row.waiting }}</td>
+        <td class="num">{{ row.resolved }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table></div>
+{% else %}
+  {% include "support/partials/empty.html" with icon_name="users" message="No members yet." %}
+{% endif %}

@@ -1,0 +1,9 @@
+{% extends "support/base.html" %}
+
+{% block page_head %}
+  <div class="page-head"><div><h1>Team overview</h1><p class="page-head__sub">The teams you belong to.</p></div></div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">{% include "support/partials/team_workload.html" with teams=teams %}</section>
+{% endblock %}

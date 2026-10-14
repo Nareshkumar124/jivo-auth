@@ -1,0 +1,24 @@
+{% load static support_tags %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{% block title %}{{ title }} · Jivo Support{% endblock %}</title>
+  {% include "support/partials/theme_script.html" %}
+  <link rel="stylesheet" href="{% static 'support/css/app.css' %}">
+  <script src="{% static 'support/js/app.js' %}" defer></script>
+</head>
+<body>
+{% include "support/partials/icons.html" %}
+<main class="auth-page">
+  <div class="auth-card">
+    <a class="brand" href="/">
+      <span class="brand__mark" aria-hidden="true">{% icon "life-buoy" 18 %}</span>
+      <span>Jivo Support</span>
+    </a>
+    {% block content %}{% endblock %}
+  </div>
+</main>
+</body>
+</html>

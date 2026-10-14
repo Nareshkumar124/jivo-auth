@@ -1,0 +1,38 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div><h1>Departments</h1><p class="page-head__sub">Users pick a department, then one of its applications, when they raise a ticket.</p></div>
+    <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:manage-department-create' %}">{% icon "plus" 16 %}New department</a></div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card card--flush">
+  {% if departments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th scope="col">Department</th><th scope="col">Applications</th><th scope="col">Default team</th><th scope="col" class="num">Pending</th><th scope="col" class="num">All tickets</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+    <tbody>
+      {% for department in departments %}
+        <tr{% if not department.is_active %} class="is-inactive"{% endif %}>
+          <td><a href="{% url 'support:manage-department' department.pk %}"><strong>{{ department.name }}</strong></a>{% if department.description %}<br><span class="muted">{{ department.description|truncatechars:80 }}</span>{% endif %}</td>
+          <td><span class="chips">{% for app in department.applications.all %}{% if app.tickets_enabled %}{% badge app.name "neutral" %}{% else %}{% badge app.name|add:" (off)" "warning" %}{% endif %}{% empty %}<span class="muted">None</span>{% endfor %}</span></td>
+          <td>{% if department.default_team %}{{ department.default_team.name }}{% else %}<span class="muted">—</span>{% endif %}</td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?department={{ department.pk }}&status=active">{{ department.pending }}</a></td>
+          <td class="num"><a href="{% url 'support:manage-tickets' %}?department={{ department.pk }}">{{ department.total }}</a></td>
+          <td>{% if department.is_active %}{% badge "Active" "good" %}{% else %}{% badge "Inactive" "neutral" %}{% endif %}</td>
+          <td>
+            <form method="post" action="{% url 'support:manage-department-toggle' department.pk %}" class="inline-form">{% csrf_token %}
+              <button type="submit" class="button button--ghost button--small"{% if department.is_active %} data-confirm="Deactivate {{ department.name }}? Users can no longer pick it on new tickets; existing tickets are unaffected."{% endif %}>{% if department.is_active %}Deactivate{% else %}Activate{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+    <div class="empty"><span class="empty__icon">{% icon "building" 22 %}</span><h2>No departments yet</h2><p>Add one, e.g. IT Department, then put applications in it.</p><a class="button button--primary" href="{% url 'support:manage-department-create' %}">{% icon "plus" 16 %}New department</a></div>
+  {% endif %}
+</section>
+{% endblock %}

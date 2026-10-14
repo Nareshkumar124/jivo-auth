@@ -37,6 +37,23 @@ ADMIN_PAGES = [
     "/admin/adminpanel/staffrole/",
 ]
 
+# The ticket system at /, with the same session (a superuser is always a
+# ticket administrator, so /manage/ answers 200).
+TICKET_PAGES = [
+    "/",
+    "/tickets/",
+    "/tickets/new/",
+    "/notifications/",
+    "/manage/tickets/",
+    "/manage/departments/",
+    "/manage/applications/",
+    "/manage/teams/",
+    "/manage/people/",
+    "/manage/reports/",
+    "/manage/activity/",
+    "/manage/settings/",
+]
+
 results = []
 
 
@@ -116,6 +133,9 @@ def public_checks(api):
     for path in ("/api/docs/", "/api/schema/", "/forgot-password/"):
         s, _, _, _ = request(api, "GET", BASE + path)
         check(f"GET {path}", s == 200, str(s))
+
+    s, _, body, _ = request(api, "GET", BASE + "/")
+    check("/ shows the ticket system's sign-in page", s == 200 and b"Sign in" in body and b'name="username"' in body, str(s))
 
     s, _, _, _ = request(api, "POST", BASE + "/api/v1/auth/login/", {"email": "nobody@example.com", "password": "wrong-password"})
     check("login with bad credentials is refused", s == 401, str(s))
@@ -200,6 +220,14 @@ def admin_checks():
     for path in ADMIN_PAGES:
         s, _, _, _ = request(browser, "GET", BASE + path)
         check(f"admin page {path}", s == 200, str(s))
+
+    for path in TICKET_PAGES:
+        s, _, body, url = request(browser, "GET", BASE + path)
+        check(f"ticket page {path}", s == 200 and b"support/css/app" in body and urllib.parse.urlparse(url).path == path, f"{s} {urllib.parse.urlparse(url).path}")
+
+    # Ticket management never lives in the Django admin.
+    s, _, _, _ = request(browser, "GET", BASE + "/admin/support/ticket/")
+    check("no ticket pages in the Django admin", s == 404, str(s))
 
 
 def main():
