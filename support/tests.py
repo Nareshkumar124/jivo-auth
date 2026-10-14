@@ -1611,7 +1611,7 @@ class ReportTests(SupportTestCase):
         page = self.client.get(self.url, {"start": "2026-01-01", "end": "2026-12-31", "team": self.oms_team.pk})
         self.assertEqual(page.context["report"]["summary"]["created"], 3)
         self.assertTrue(page.context["report"]["chart_capped"])
-        self.assertContains(page, "Narrow the range")
+        self.assertContains(page, "Daily charts need a range of 92 days or less")
 
         page = self.client.get(self.url, {"application": self.jsap.pk})
         self.assertEqual(page.context["report"]["summary"]["created"], 0)

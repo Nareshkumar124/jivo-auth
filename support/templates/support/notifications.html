@@ -3,7 +3,7 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>Notifications</h1><p class="page-head__sub">Changes to tickets you raised or handle. The same messages are emailed to you.</p></div>
+    <div><h1>Notifications</h1></div>
     {% if unread_notifications %}<div class="page-head__actions"><form method="post" class="inline-form">{% csrf_token %}<button type="submit" class="button">{% icon "check" 16 %}Mark all as read</button></form></div>{% endif %}
   </div>
 {% endblock %}
@@ -28,7 +28,7 @@
     </ol>
     {% include "support/partials/pagination.html" %}
   {% else %}
-    {% include "support/partials/empty.html" with icon_name="bell" message="Nothing yet. You'll be told here when a ticket of yours changes." %}
+    {% include "support/partials/empty.html" with icon_name="bell" message="No notifications yet." %}
   {% endif %}
 </section>
 {% endblock %}

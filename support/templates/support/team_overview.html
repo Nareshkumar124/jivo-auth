@@ -33,13 +33,13 @@
 {% endif %}
 
 <section class="card card--flush" aria-labelledby="members-title">
-  <header class="card__head"><div><h2 class="card__title" id="members-title">Members</h2><p class="card__sub">Who holds what</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="members-title">Members</h2></div></header>
   {% include "support/partials/member_table.html" with members=members %}
 </section>
 
 {% if can_manage %}
   <section class="card form" aria-labelledby="reassign-title">
-    <header class="card__head"><div><h2 class="card__title" id="reassign-title">Reassign a member's tickets</h2><p class="card__sub">For someone who is away or leaving. Every active ticket of {{ team.name }} assigned to them moves; each one is recorded and the new owner is told.</p></div></header>
+    <header class="card__head"><div><h2 class="card__title" id="reassign-title">Reassign a member's tickets</h2></div></header>
     <form method="post" action="{% url 'support:team-reassign' team.pk %}">
       {% csrf_token %}
       <div class="form__row">
@@ -52,7 +52,7 @@
 {% endif %}
 
 <section class="card" aria-labelledby="apps-title">
-  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications</h2><p class="card__sub">New tickets for these go to {{ team.name }}</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications</h2></div></header>
   {% if applications %}
     <ul class="pill-list">{% for app in applications %}<li>{% badge app.name "neutral" %}</li>{% endfor %}</ul>
   {% else %}

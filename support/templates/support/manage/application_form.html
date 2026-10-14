@@ -7,7 +7,7 @@
   <div class="page-head">
     <div>
       <h1>{{ title }}</h1>
-      <p class="page-head__sub">{% if application %}<code>{{ application.slug }}</code> · {{ counts.pending }} pending of {{ counts.total }} ticket{{ counts.total|pluralize }}{% else %}Registers the application for tickets only: no API key and no users, so sign-in is unaffected.{% endif %}</p>
+      {% if application %}<p class="page-head__sub"><code>{{ application.slug }}</code> · {{ counts.pending }} pending of {{ counts.total }} ticket{{ counts.total|pluralize }}</p>{% endif %}
     </div>
   </div>
 {% endblock %}
@@ -24,7 +24,7 @@
   {% include "support/partials/field.html" with field=form.support_team %}
   {% include "support/partials/field.html" with field=form.tickets_enabled %}
   {% if application and not application.is_active %}
-    <div class="callout callout--info">{% icon "info" 16 %}<p>Sign-in to this application is turned off in the auth admin panel, so it isn't offered on the ticket form either.</p></div>
+    <div class="callout callout--info">{% icon "info" 16 %}<p>Turned off in the auth admin panel, so it isn't offered on the ticket form.</p></div>
   {% endif %}
   <div class="form__actions">
     <button type="submit" class="button button--primary">{% if application %}Save{% else %}Add application{% endif %}</button>

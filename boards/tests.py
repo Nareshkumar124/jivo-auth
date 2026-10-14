@@ -185,7 +185,7 @@ class DashboardSectionTests(BoardsTestCase):
         self.assertTemplateUsed(page, "support/base.html")
         for slide in registry.SLIDES:
             self.assertContains(page, reverse("boards:board", args=[slide.key]))
-            self.assertContains(page, escape(slide.description))
+            self.assertContains(page, escape(slide.label))
         self.assertContains(page, reverse("boards:carousel"))
         self.assertContains(page, "No built board is on the rotation")
 

@@ -5,10 +5,7 @@
   <div class="page-head">
     <div>
       <h1>My tickets</h1>
-      <p class="page-head__sub">
-        {% if counts.total %}{{ counts.active }} active · {{ counts.done }} resolved or closed{% if counts.waiting %} · <strong>{{ counts.waiting }} waiting for your reply</strong>{% endif %}
-        {% else %}Problems you report appear here, with their status and the team's replies.{% endif %}
-      </p>
+      {% if counts.total %}<p class="page-head__sub">{{ counts.active }} active · {{ counts.done }} resolved or closed{% if counts.waiting %} · <strong>{{ counts.waiting }} waiting for your reply</strong>{% endif %}</p>{% endif %}
     </div>
     <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:ticket-create' %}">{% icon "plus" 16 %}Raise ticket</a></div>
   </div>
@@ -21,9 +18,9 @@
     {% include "support/partials/ticket_table.html" with tickets=page.object_list show_assignee=True %}
     {% include "support/partials/pagination.html" %}
   {% elif is_filtered %}
-    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><p>Try another search or clear the filters.</p><a class="button" href="{% url 'support:my-tickets' %}">Clear filters</a></div>
+    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><a class="button" href="{% url 'support:my-tickets' %}">Clear filters</a></div>
   {% else %}
-    <div class="empty"><span class="empty__icon">{% icon "ticket" 22 %}</span><h2>No tickets yet</h2><p>Something not working in one of the Jivo applications? Tell the team responsible for it.</p><a class="button button--primary" href="{% url 'support:ticket-create' %}">{% icon "plus" 16 %}Raise your first ticket</a></div>
+    <div class="empty"><span class="empty__icon">{% icon "ticket" 22 %}</span><h2>No tickets yet</h2><a class="button button--primary" href="{% url 'support:ticket-create' %}">{% icon "plus" 16 %}Raise your first ticket</a></div>
   {% endif %}
 </section>
 {% endblock %}

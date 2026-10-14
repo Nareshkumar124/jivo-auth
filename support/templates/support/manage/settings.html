@@ -1,7 +1,7 @@
 {% extends "support/base.html" %}
 
 {% block page_head %}
-  <div class="page-head"><div><h1>Settings</h1><p class="page-head__sub">How the ticket workflow behaves for everyone.</p></div></div>
+  <div class="page-head"><div><h1>Settings</h1></div></div>
 {% endblock %}
 
 {% block content %}
@@ -11,7 +11,7 @@
 
   <fieldset class="fieldset">
     <legend>SLA deadlines</legend>
-    <p class="fieldset__help">Set when a ticket is raised or reopened, and recomputed when its priority changes. Calendar hours; 0 means no deadline.</p>
+    <p class="fieldset__help">Calendar hours; 0 means no deadline.</p>
     <div class="form__row">
       {% include "support/partials/field.html" with field=form.response_hours_urgent %}
       {% include "support/partials/field.html" with field=form.resolution_hours_urgent %}

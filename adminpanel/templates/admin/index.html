@@ -11,9 +11,6 @@
   <div class="jv-page-head">
     <div>
       <h1>{{ title }}</h1>
-      <p class="jv-page-head__sub">
-        {% blocktranslate with name=user.get_short_name|default:user.get_username %}Welcome back, {{ name }}. Here’s what’s happening across Jivo Auth.{% endblocktranslate %}
-      </p>
     </div>
     <div class="jv-page-head__actions">
       {% if perms.users.add_user %}
@@ -57,7 +54,7 @@
             <span class="jv-badge jv-badge--{{ item.tone }}">{{ item.count|compact }}</span>
             <div>
               <a href="{{ item.url }}">{{ item.text|capfirst }}</a>
-              <p class="jv-muted">{{ item.hint }}</p>
+              {% if item.hint %}<p class="jv-muted">{{ item.hint }}</p>{% endif %}
             </div>
           </li>
         {% endfor %}
@@ -116,7 +113,6 @@
         <header class="jv-card__head">
           <div>
             <h2 class="jv-card__title" id="activity-title">{% translate 'Recent activity' %}</h2>
-            <p class="jv-card__sub">{% translate 'Latest events from the audit log' %}</p>
           </div>
           <a class="jv-card__link" href="{% url 'admin:audit_auditevent_changelist' %}">{% translate 'Open audit log' %}</a>
         </header>

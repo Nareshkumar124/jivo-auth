@@ -44,7 +44,7 @@ def attachment_field(config):
     return MultipleFileField(
         required=False,
         label="Attachments",
-        help_text=f"Screenshots, logs or documents, up to {config.max_attachment_mb} MB each ({allowed}).",
+        help_text=f"Up to {config.max_attachment_mb} MB each ({allowed}).",
         widget=MultipleFileInput(
             attrs={
                 "accept": ",".join(f".{ext}" for ext in sorted(config.allowed_extension_set())),
@@ -141,7 +141,6 @@ class TicketForm(forms.Form):
     department = NameChoiceField(
         queryset=Department.objects.none(),
         empty_label="Choose a department",
-        help_text="Who looks after the application you need help with.",
     )
 
     application = NameChoiceField(
@@ -158,7 +157,6 @@ class TicketForm(forms.Form):
         widget=forms.Textarea(
             attrs={"rows": 8, "placeholder": "What happened, what you expected, and the steps to reproduce it."}
         ),
-        help_text="Include error messages and the time it happened.",
     )
 
     def __init__(self, *args, config=None, **kwargs):
@@ -563,7 +561,6 @@ class DepartmentForm(forms.ModelForm):
         queryset=Team.objects.filter(is_active=True).order_by("name"),
         required=False,
         empty_label="None",
-        help_text=Department._meta.get_field("default_team").help_text,
     )
 
     class Meta:
@@ -582,7 +579,7 @@ class ApplicationRoutingForm(forms.ModelForm):
         required=False,
         empty_label="None",
         label="Responsible team",
-        help_text="New tickets go to this team. Existing tickets keep their team.",
+        help_text="Existing tickets keep their team.",
     )
 
     class Meta:
@@ -750,6 +747,15 @@ class SettingsForm(forms.ModelForm):
         model = SupportSettings
         exclude = ["updated_at"]
         widgets = {"allowed_extensions": forms.TextInput()}
+        # Only what the label can't say: the meaning of 0, the format.
+        help_texts = {
+            "members_can_assign": "",
+            "members_can_change_priority": "",
+            "reopen_window_days": "0 means any time.",
+            "auto_close_after_days": "0 means never.",
+            "allowed_extensions": "Comma-separated.",
+            "notify_team_on_new_ticket": "",
+        }
 
 
 class ActivityFilterForm(forms.Form):

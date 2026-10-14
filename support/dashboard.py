@@ -235,8 +235,8 @@ def team_section(user, now):
         "teams": list(Team.objects.filter(pk__in=team_ids).order_by("name")),
         "counts": counts,
         "tiles": [
-            {"label": "New for my teams", "value": counts["open"], "icon": "inbox", "url": team_url("all", status="new"), "note": "open or reopened"},
-            {"label": "Available to claim", "value": counts["unassigned"], "icon": "user-x", "url": team_url("available"), "note": "nobody assigned"},
+            {"label": "New for my teams", "value": counts["open"], "icon": "inbox", "url": team_url("all", status="new"), "note": ""},
+            {"label": "Available to claim", "value": counts["unassigned"], "icon": "user-x", "url": team_url("available"), "note": ""},
             {"label": "Assigned to me", "value": mine["active"], "icon": "user-check", "url": team_url("mine"), "note": f"{mine['overdue']} overdue" if mine["overdue"] else "", "tone": "critical" if mine["overdue"] else ""},
             {"label": "In progress", "value": counts["in_progress"], "icon": "activity", "url": team_url("all", status=Status.IN_PROGRESS)},
             {"label": "Waiting for information", "value": counts["waiting"], "icon": "clock", "url": team_url("all", status=Status.WAITING)},
@@ -274,13 +274,13 @@ def admin_section(now):
 
     tiles = [
         ("Total tickets", counts["total"], "", "ticket", manage_url()),
-        ("New and open", counts["open"], "waiting for a team member", "inbox", manage_url(status="new")),
-        ("Unassigned", counts["unassigned"], "active, nobody assigned", "user-x", manage_url(status="active", assignee="none")),
+        ("New and open", counts["open"], "", "inbox", manage_url(status="new")),
+        ("Unassigned", counts["unassigned"], "", "user-x", manage_url(status="active", assignee="none")),
         ("In progress", counts["in_progress"], "", "activity", manage_url(status=Status.IN_PROGRESS)),
-        ("Waiting for information", counts["waiting"], "the user's turn", "clock", manage_url(status=Status.WAITING)),
+        ("Waiting for information", counts["waiting"], "", "clock", manage_url(status=Status.WAITING)),
         ("Resolved", counts["resolved"], "", "check-circle", manage_url(status=Status.RESOLVED)),
         ("Closed", counts["closed"], "", "archive", manage_url(status=Status.CLOSED)),
-        ("Overdue", counts["overdue"], "past an SLA deadline", "alert", manage_url(sla="overdue")),
+        ("Overdue", counts["overdue"], "", "alert", manage_url(sla="overdue")),
     ]
 
     created = daily_counts(tickets, "created_at", days[0])
@@ -309,28 +309,24 @@ def admin_section(now):
         {
             "count": counts["overdue"],
             "text": "overdue tickets",
-            "hint": "Past their first-response or resolution deadline.",
             "url": manage_url(sla="overdue"),
             "tone": "critical",
         },
         {
             "count": counts["unrouted"],
             "text": "active tickets without a team",
-            "hint": "Their application has no responsible team. Move them to a team.",
             "url": manage_url(status="active", team="none"),
             "tone": "warning",
         },
         {
             "count": stale_waiting,
             "text": "tickets waiting for the user for over a week",
-            "hint": "Nudge the user or close them.",
             "url": manage_url(status=Status.WAITING, updated_to=timezone.localdate(week_ago).isoformat()),
             "tone": "info",
         },
         {
             "count": apps_without_team,
             "text": "applications whose tickets can't be routed",
-            "hint": "They accept tickets but have no responsible team, and their department has no default team.",
             "url": _url("support:manage-applications", {"routing": "no_team"}),
             "tone": "warning",
         },

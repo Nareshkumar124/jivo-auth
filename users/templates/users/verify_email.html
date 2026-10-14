@@ -26,8 +26,6 @@
     </form>
   {% else %}
     <h1>Verify your email</h1>
-    <p>Confirm that this email address belongs to you.</p>
-
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="token" value="{{ token }}">

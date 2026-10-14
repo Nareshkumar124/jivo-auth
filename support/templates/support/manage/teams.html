@@ -3,7 +3,7 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>Teams and members</h1><p class="page-head__sub">Each application names a responsible team; its members receive and handle the tickets.</p></div>
+    <div><h1>Teams and members</h1></div>
     <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:manage-team-create' %}">{% icon "plus" 16 %}New team</a></div>
   </div>
 {% endblock %}
@@ -30,7 +30,7 @@
     </tbody>
   </table></div>
   {% else %}
-    <div class="empty"><span class="empty__icon">{% icon "users" 22 %}</span><h2>No teams yet</h2><p>Create teams such as OMS Team or JSAP Team and add their members.</p><a class="button button--primary" href="{% url 'support:manage-team-create' %}">{% icon "plus" 16 %}New team</a></div>
+    <div class="empty"><span class="empty__icon">{% icon "users" 22 %}</span><h2>No teams yet</h2><a class="button button--primary" href="{% url 'support:manage-team-create' %}">{% icon "plus" 16 %}New team</a></div>
   {% endif %}
 </section>
 {% endblock %}

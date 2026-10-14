@@ -192,7 +192,6 @@ class BoardView(DashboardAccessMixin, View):
             slide.title,
             slide=slide,
             heading=slide.title,
-            description=slide.description,
             frame_url=reverse("boards:screen", args=[key]) + "?embed=1",
             screen_url=reverse("boards:screen", args=[key]),
         )
@@ -210,7 +209,6 @@ class BuiltBoardView(DashboardAccessMixin, View):
             name,
             slide=registry.BUILT,
             heading=name,
-            description=registry.BUILT.description,
             frame_url=reverse("boards:built-screen", args=[slug]) + "?embed=1",
             screen_url=reverse("boards:built-screen", args=[slug]),
         )

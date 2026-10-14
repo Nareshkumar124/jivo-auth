@@ -7,7 +7,6 @@
   <div class="page-head">
     <div>
       <h1>{{ heading }}</h1>
-      <p class="page-head__sub">{{ description }} Refreshes by itself every minute.</p>
     </div>
     <div class="page-head__actions">
       <button type="button" class="button button--primary" data-fullscreen-target="#board-frame">{% icon "maximize" 16 %}Full screen</button>
@@ -21,5 +20,4 @@
 <div class="board-frame">
   <iframe id="board-frame" src="{{ frame_url }}" title="{{ heading }}" allowfullscreen></iframe>
 </div>
-<p class="board-frame__note">Drawn for a 16:9 screen, like the factory's wall boards. On a small screen use Full screen or a larger window.</p>
 {% endblock %}

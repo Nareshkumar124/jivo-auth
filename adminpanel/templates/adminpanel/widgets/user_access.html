@@ -51,7 +51,7 @@
 
   <div class="jv-access__empty" data-empty{% if w.members %} hidden{% endif %}>
     <span class="jv-empty__icon">{% icon "users" 22 %}</span>
-    <p>No one has access yet.{% if not w.read_only and w.can_add %} Search above, or paste emails below, to add people.{% endif %}</p>
+    <p>No one has access yet.</p>
   </div>
 
   <p class="jv-access__nomatch" data-nomatch hidden>No one in this list matches “<span data-nomatch-term></span>”.</p>
@@ -61,7 +61,7 @@
     <details class="jv-access__bulk"{% if w.emails %} open{% endif %}>
       <summary>{% icon "mail" 15 %} Add several people by email</summary>
       <textarea name="{{ w.name }}_emails" rows="4" placeholder="ana@jivo.in, ravi@jivo.in&#10;or one email per line" aria-label="Emails of people to add" spellcheck="false">{{ w.emails }}</textarea>
-      <p class="help">Each email must belong to an existing account. They're added when you save.</p>
+      <p class="help">Added when you save.</p>
     </details>
     {% else %}
     <p class="help">To add people you need permission to view users.</p>

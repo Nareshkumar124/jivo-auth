@@ -646,10 +646,10 @@ class TeamReassignView(PortalMixin, View):
 
 
 TEAM_PRESETS = {
-    "available": ("Available tickets", "Unassigned tickets your teams can claim."),
-    "mine": ("My assigned tickets", "Tickets assigned to you."),
-    "all": ("Team tickets", "Every ticket routed to your teams."),
-    "resolved": ("Resolved tickets", "Resolved and closed tickets of your teams."),
+    "available": "Available tickets",
+    "mine": "My assigned tickets",
+    "all": "Team tickets",
+    "resolved": "Resolved tickets",
 }
 
 
@@ -659,7 +659,7 @@ class TeamTicketsView(TeamRequiredMixin, View):
         if preset not in TEAM_PRESETS:
             raise Http404
 
-        title, blurb = TEAM_PRESETS[preset]
+        title = TEAM_PRESETS[preset]
         teams = access.team_ids(request.user)
         tickets = Ticket.objects.filter(team_id__in=teams).with_related()
 
@@ -678,7 +678,6 @@ class TeamTicketsView(TeamRequiredMixin, View):
         return self.render(
             "support/team_tickets.html",
             title=title,
-            blurb=blurb,
             preset=preset,
             form=form,
             page=self.paginate(tickets),

@@ -3,7 +3,7 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>Reports and analytics</h1><p class="page-head__sub">Tickets raised from {{ report.start|date:"j M Y" }} to {{ report.end|date:"j M Y" }}, counted from the database as it is now.</p></div>
+    <div><h1>Reports and analytics</h1><p class="page-head__sub">Tickets raised from {{ report.start|date:"j M Y" }} to {{ report.end|date:"j M Y" }}</p></div>
     <div class="page-head__actions">
       <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=summary">{% icon "download" 16 %}Export summary</a>
       <a class="button" href="?{{ query }}{% if query %}&{% endif %}export=tickets">{% icon "download" 16 %}Export tickets</a>
@@ -29,16 +29,16 @@
   <div class="tile"><span class="tile__label">{% icon "clock" 16 %}First response</span><span class="tile__value">{{ s.response.hours }}</span><span class="tile__note">average, {{ s.response.count }} answered</span></div>
   <div class="tile"><span class="tile__label">{% icon "activity" 16 %}Resolution</span><span class="tile__value">{{ s.resolution.hours }}</span><span class="tile__note">{% if s.sla.percent is not None %}{{ s.sla.percent|floatformat:0 }}% within SLA ({{ s.sla.met }}/{{ s.sla.total }}){% else %}no SLA data{% endif %}</span></div>
   <div class="tile"><span class="tile__label">{% icon "inbox" 16 %}Pending now</span><span class="tile__value">{{ s.pending_now|compact }}</span><span class="tile__note">active, matching the filters</span></div>
-  <div class="tile"><span class="tile__label">{% icon "alert" 16 %}Overdue now</span><span class="tile__value">{{ s.overdue_now|compact }}</span><span class="tile__note">past a deadline</span></div>
+  <div class="tile"><span class="tile__label">{% icon "alert" 16 %}Overdue now</span><span class="tile__value">{{ s.overdue_now|compact }}</span></div>
 </section>
 
 {% if r.chart %}
 <div class="grid">
-  <section class="card"><header class="card__head"><div><h2 class="card__title">Tickets over time</h2><p class="card__sub">Raised and resolved per day</p></div></header>{% include "support/partials/column_chart.html" with chart=r.chart chart_label="Tickets raised and resolved per day" %}</section>
+  <section class="card"><header class="card__head"><div><h2 class="card__title">Tickets over time</h2></div></header>{% include "support/partials/column_chart.html" with chart=r.chart chart_label="Tickets raised and resolved per day" %}</section>
   <section class="card"><header class="card__head"><div><h2 class="card__title">Pending and overdue</h2><p class="card__sub">Open at the end of each day</p></div></header>{% include "support/partials/column_chart.html" with chart=r.trend chart_label="Pending and overdue tickets per day" %}</section>
 </div>
 {% else %}
-  <div class="callout callout--info">{% icon "info" 16 %}<p>Daily charts are shown for ranges up to 92 days. Narrow the range to see them.</p></div>
+  <div class="callout callout--info">{% icon "info" 16 %}<p>Daily charts need a range of 92 days or less.</p></div>
 {% endif %}
 
 <div class="grid">
@@ -52,7 +52,7 @@
 <div class="grid">
   <section class="card"><header class="card__head"><h2 class="card__title">By team</h2></header>{% include "support/partials/report_table.html" with rows=r.teams %}</section>
   <section class="card">
-    <header class="card__head"><div><h2 class="card__title">Team members</h2><p class="card__sub">Active tickets held now, and resolved in the range</p></div></header>
+    <header class="card__head"><div><h2 class="card__title">Team members</h2></div></header>
     {% if r.members %}
       <div class="table-wrap"><table class="table table--compact">
         <thead><tr><th scope="col">Member</th><th scope="col">Team</th><th scope="col" class="num">Active</th><th scope="col" class="num">Resolved</th></tr></thead>

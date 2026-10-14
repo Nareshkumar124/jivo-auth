@@ -3,14 +3,14 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>People and roles</h1><p class="page-head__sub">{{ counts.admins }} administrator{{ counts.admins|pluralize }} · {{ counts.managers }} team manager{{ counts.managers|pluralize }} · {{ counts.members }} team member{{ counts.members|pluralize }}{% if dashboards %} · {{ counts.dashboards }} can see the JI dashboards{% endif %}. Everyone else can raise and follow their own tickets. Accounts themselves are created in the auth admin panel.</p></div>
+    <div><h1>People and roles</h1><p class="page-head__sub">{{ counts.admins }} administrator{{ counts.admins|pluralize }} · {{ counts.managers }} team manager{{ counts.managers|pluralize }} · {{ counts.members }} team member{{ counts.members|pluralize }}{% if dashboards %} · {{ counts.dashboards }} can see the JI dashboards{% endif %}</p></div>
   </div>
 {% endblock %}
 
 {% block content %}
 <div class="grid">
 <section class="card form" aria-labelledby="grant-title">
-  <header class="card__head"><div><h2 class="card__title" id="grant-title">{% icon "shield" 16 %}Make someone a ticket administrator</h2><p class="card__sub">Administrators see and manage every ticket and everything under Administration. Superusers always are one. Team roles are given on each team's page.</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="grant-title">{% icon "shield" 16 %}Make someone a ticket administrator</h2></div></header>
   <form method="post" action="{% url 'support:manage-administrators' %}" class="member-row">
     {% csrf_token %}
     <label class="visually-hidden" for="admin-email">Email</label>
@@ -21,7 +21,7 @@
 
 {% if dashboards %}
 <section class="card form" aria-labelledby="dash-title">
-  <header class="card__head"><div><h2 class="card__title" id="dash-title">{% icon "chart" 16 %}Give dashboard access</h2><p class="card__sub">They get the Dashboard section with every JI dashboard and the wall carousel. The same permission can be given in /admin/: User permissions, or the "Dashboard viewer" staff role.</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="dash-title">{% icon "chart" 16 %}Give dashboard access</h2></div></header>
   <form method="post" action="{% url 'support:manage-dashboard-access' %}" class="member-row">
     {% csrf_token %}
     <label class="visually-hidden" for="dash-email">Email</label>

@@ -30,13 +30,13 @@
 <div class="ticket">
   <div class="ticket__main">
     {% if ticket.status == "waiting" and is_creator %}
-      <div class="callout callout--warning">{% icon "help" 16 %}<p>The team needs more information from you. Reply below so they can continue.</p></div>
+      <div class="callout callout--warning">{% icon "help" 16 %}<p>The team needs more information from you.</p></div>
     {% elif ticket.status == "resolved" and is_creator %}
-      <div class="callout callout--good">{% icon "check-circle" 16 %}<p>This ticket is resolved. If everything works now, close it; if not, reopen it and say what is still wrong.</p></div>
+      <div class="callout callout--good">{% icon "check-circle" 16 %}<p>This ticket is resolved. Close it if everything works, or reopen it.</p></div>
     {% elif ticket.status == "closed" %}
-      <div class="callout callout--info">{% icon "archive" 16 %}<p>This ticket is closed.{% if can.reopen %} Reopen it to continue the conversation.{% endif %}</p></div>
+      <div class="callout callout--info">{% icon "archive" 16 %}<p>This ticket is closed.</p></div>
     {% elif not ticket.team and can.handle %}
-      <div class="callout callout--warning">{% icon "alert" 16 %}<p>No team is responsible for this ticket yet.{% if can.team %} Pick one under Actions.{% endif %}</p></div>
+      <div class="callout callout--warning">{% icon "alert" 16 %}<p>No team is responsible for this ticket yet.</p></div>
     {% endif %}
 
     <section class="card msg" aria-label="Description">
@@ -95,7 +95,7 @@
           {% if can.internal %}<button type="submit" class="button" data-set-action="note">{% icon "eye-off" 15 %}Add internal note</button>{% endif %}
           {% if can.request_info %}<button type="submit" class="button" data-set-action="request_info">{% icon "help" 15 %}Request information</button>{% endif %}
         </div>
-        {% if can.internal %}<p class="field__help">Replies are seen by the person who raised the ticket. Internal notes are seen only by the team and administrators. Requesting information sets the ticket to “waiting”.</p>{% endif %}
+        {% if can.internal %}<p class="field__help">Internal notes are seen only by the team and administrators.</p>{% endif %}
       </form>
     {% endif %}
   </div>

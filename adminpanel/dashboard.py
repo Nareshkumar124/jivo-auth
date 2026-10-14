@@ -115,14 +115,12 @@ def user_section(now, today, days):
             {
                 "count": counts["stale_unverified"],
                 "text": "unverified for over a week",
-                "hint": "They can't sign in until they verify their email.",
                 "url": changelist("users.user", "is_verified__exact=0&is_active__exact=1"),
                 "tone": "warning",
             },
             {
                 "count": no_access,
                 "text": "active users without application access",
-                "hint": "They can sign in, but no application accepts them.",
                 "url": changelist("users.user", "has_access=no"),
                 "tone": "info",
             },

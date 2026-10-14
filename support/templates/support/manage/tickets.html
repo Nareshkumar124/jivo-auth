@@ -54,9 +54,9 @@
 
     {% include "support/partials/pagination.html" %}
   {% elif is_filtered %}
-    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><p>Try another search or clear the filters.</p><a class="button" href="{{ request.path }}">Clear filters</a></div>
+    <div class="empty"><span class="empty__icon">{% icon "search" 22 %}</span><h2>No tickets match</h2><a class="button" href="{{ request.path }}">Clear filters</a></div>
   {% else %}
-    {% include "support/partials/empty.html" with icon_name="ticket" heading="No tickets yet" message="They appear here as people report problems." %}
+    {% include "support/partials/empty.html" with icon_name="ticket" heading="No tickets yet" %}
   {% endif %}
 </section>
 {% endblock %}

@@ -39,8 +39,6 @@ class Slide:
     #: How often a screen re-reads this board, in seconds. Served in the
     #: payload's ``meta`` so a service can slow it down.
     refresh_seconds: int = 60
-    #: One line for the Dashboard section's overview page.
-    description: str = ""
     #: The ticket system's icon for the board (support/partials/icons.html).
     icon: str = "chart"
 
@@ -57,7 +55,6 @@ SLIDES: Tuple[Slide, ...] = (
         template="boards/fragments/admin.html",
         css=("boards/admin.css",),
         js=("boards/admin.js",),
-        description="The whole factory at a glance: production, storage, dispatch, cost and the day's actions.",
     ),
     Slide(
         key="plant",
@@ -67,7 +64,6 @@ SLIDES: Tuple[Slide, ...] = (
         template="boards/fragments/plant.html",
         css=("boards/plant.css",),
         js=("boards/plant.js",),
-        description="Purchase orders and receipts, packaging stores, blowing, production runs, waste and the plan.",
         icon="building",
     ),
     Slide(
@@ -78,7 +74,6 @@ SLIDES: Tuple[Slide, ...] = (
         template="boards/fragments/logistics.html",
         css=("boards/logistics.css",),
         js=("boards/logistics.js",),
-        description="Warehouse occupancy, non-moving stock, dispatch plans and fulfilment, freight and stock in transit.",
         icon="send",
     ),
     Slide(
@@ -89,7 +84,6 @@ SLIDES: Tuple[Slide, ...] = (
         template="boards/fragments/accounts.html",
         css=("boards/accounts.css",),
         js=("boards/accounts.js",),
-        description="Imprest, cash and advances from the cash book, with the book check. Names are hidden.",
         icon="book",
     ),
 )
@@ -105,7 +99,6 @@ BUILT = Slide(
     template="boards/fragments/built.html",
     css=("boards/built.css",),
     js=("boards/built.js",),
-    description="A board composed in the factory's dashboard builder.",
     icon="layers",
 )
 

@@ -3,7 +3,7 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>Departments</h1><p class="page-head__sub">Users pick a department, then one of its applications, when they raise a ticket.</p></div>
+    <div><h1>Departments</h1></div>
     <div class="page-head__actions"><a class="button button--primary" href="{% url 'support:manage-department-create' %}">{% icon "plus" 16 %}New department</a></div>
   </div>
 {% endblock %}
@@ -32,7 +32,7 @@
     </tbody>
   </table></div>
   {% else %}
-    <div class="empty"><span class="empty__icon">{% icon "building" 22 %}</span><h2>No departments yet</h2><p>Add one, e.g. IT Department, then put applications in it.</p><a class="button button--primary" href="{% url 'support:manage-department-create' %}">{% icon "plus" 16 %}New department</a></div>
+    <div class="empty"><span class="empty__icon">{% icon "building" 22 %}</span><h2>No departments yet</h2><a class="button button--primary" href="{% url 'support:manage-department-create' %}">{% icon "plus" 16 %}New department</a></div>
   {% endif %}
 </section>
 {% endblock %}

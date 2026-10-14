@@ -5,9 +5,6 @@
   <div class="page-head">
     <div>
       <h1>Welcome back, {{ user.get_short_name }}</h1>
-      <p class="page-head__sub">
-        {% if dashboard.admin %}Everything happening across the support desk.{% elif dashboard.team %}Your teams' queues and your own tickets.{% else %}Report a problem with a Jivo application and follow its progress.{% endif %}
-      </p>
     </div>
     <div class="page-head__actions">
       <a class="button button--primary" href="{% url 'support:ticket-create' %}">{% icon "plus" 16 %}Raise ticket</a>
@@ -32,7 +29,7 @@
         {% for item in d.attention %}
           <li class="attention__item">
             {% badge item.count item.tone %}
-            <div><a href="{{ item.url }}">{{ item.text|capfirst }}</a><p class="muted">{{ item.hint }}</p></div>
+            <a href="{{ item.url }}">{{ item.text|capfirst }}</a>
           </li>
         {% endfor %}
       </ul>
@@ -71,11 +68,11 @@
   </div>
 
   <section class="card card--flush" aria-labelledby="teams-title">
-    <header class="card__head"><div><h2 class="card__title" id="teams-title">Team workload</h2><p class="card__sub">Tickets by state, per responsible team</p></div><a class="card__link" href="{% url 'support:manage-teams' %}">Teams and members</a></header>
+    <header class="card__head"><div><h2 class="card__title" id="teams-title">Team workload</h2></div><a class="card__link" href="{% url 'support:manage-teams' %}">Teams and members</a></header>
     {% if d.teams %}
       {% include "support/partials/team_workload.html" with teams=d.teams %}
     {% else %}
-      {% include "support/partials/empty.html" with icon_name="users" message="No teams yet. Create one and add its members." %}
+      {% include "support/partials/empty.html" with icon_name="users" message="No teams yet." %}
     {% endif %}
   </section>
 
@@ -100,12 +97,12 @@
 
   <div class="grid">
     <section class="card card--flush" aria-labelledby="available-title">
-      <header class="card__head"><div><h2 class="card__title" id="available-title">Available to claim</h2><p class="card__sub">Oldest first</p></div><a class="card__link" href="{% url 'support:team-tickets' 'available' %}">All available</a></header>
-      {% if t.available %}{% include "support/partials/ticket_table.html" with tickets=t.available show_creator=True %}{% else %}{% include "support/partials/empty.html" with icon_name="check" message="Nothing waiting. Every active ticket has an owner." tone="good" %}{% endif %}
+      <header class="card__head"><div><h2 class="card__title" id="available-title">Available to claim</h2></div><a class="card__link" href="{% url 'support:team-tickets' 'available' %}">All available</a></header>
+      {% if t.available %}{% include "support/partials/ticket_table.html" with tickets=t.available show_creator=True %}{% else %}{% include "support/partials/empty.html" with icon_name="check" message="Nothing waiting." tone="good" %}{% endif %}
     </section>
     <section class="card card--flush" aria-labelledby="mine-title">
-      <header class="card__head"><div><h2 class="card__title" id="mine-title">Assigned to me</h2><p class="card__sub">Recently updated first</p></div><a class="card__link" href="{% url 'support:team-tickets' 'mine' %}">All mine</a></header>
-      {% if t.assigned %}{% include "support/partials/ticket_table.html" with tickets=t.assigned show_creator=True %}{% else %}{% include "support/partials/empty.html" with icon_name="user-check" message="Nothing assigned to you. Claim one from the available list." %}{% endif %}
+      <header class="card__head"><div><h2 class="card__title" id="mine-title">Assigned to me</h2></div><a class="card__link" href="{% url 'support:team-tickets' 'mine' %}">All mine</a></header>
+      {% if t.assigned %}{% include "support/partials/ticket_table.html" with tickets=t.assigned show_creator=True %}{% else %}{% include "support/partials/empty.html" with icon_name="user-check" message="Nothing assigned to you." %}{% endif %}
     </section>
   </div>
 {% endwith %}
@@ -130,7 +127,7 @@
     </section>
   {% endfor %}
   <section class="card card--flush" aria-labelledby="members-title">
-    <header class="card__head"><div><h2 class="card__title" id="members-title">Who holds what</h2><p class="card__sub">Members of the teams you manage</p></div></header>
+    <header class="card__head"><div><h2 class="card__title" id="members-title">Who holds what</h2></div></header>
     {% include "support/partials/member_table.html" with members=m.members %}
   </section>
 {% endwith %}
@@ -147,7 +144,6 @@
       <div class="empty">
         <span class="empty__icon">{% icon "ticket" 22 %}</span>
         <h2>No tickets yet</h2>
-        <p>Something not working in one of the Jivo applications? Tell the team responsible for it.</p>
         <a class="button button--primary" href="{% url 'support:ticket-create' %}">{% icon "plus" 16 %}Raise your first ticket</a>
       </div>
     {% endif %}

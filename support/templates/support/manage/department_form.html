@@ -26,7 +26,7 @@
 
 {% if department %}
 <section class="card card--flush" aria-labelledby="apps-title">
-  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications in {{ department.name }}</h2><p class="card__sub">Change an application's responsible team from its page.</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="apps-title">Applications in {{ department.name }}</h2></div></header>
   {% if applications %}
     <div class="table-wrap"><table class="table">
       <thead><tr><th scope="col">Application</th><th scope="col">Responsible team</th><th scope="col">Tickets</th><th scope="col" class="num">Pending</th></tr></thead>

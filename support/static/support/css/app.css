@@ -2075,12 +2075,6 @@ a.bars__label:hover {
     text-decoration: underline;
 }
 
-.dash-card__text {
-    margin: 4px 0 0;
-    color: var(--text-2);
-    font-size: 13.5px;
-}
-
 .dash-card__body {
     flex: 1;
 }
@@ -2095,7 +2089,7 @@ a.bars__label:hover {
    the page allows while the whole board stays in view. The board sizes
    itself from the frame's viewport, so it scales exactly. */
 .board-frame {
-    width: min(100%, calc((100vh - var(--header-h) - 190px) * 16 / 9));
+    width: min(100%, calc((100vh - var(--header-h) - 150px) * 16 / 9));
     min-width: min(100%, 720px);
     aspect-ratio: 16 / 9;
     overflow: hidden;
@@ -2110,12 +2104,6 @@ a.bars__label:hover {
     width: 100%;
     height: 100%;
     border: 0;
-}
-
-.board-frame__note {
-    margin: 10px 0 0;
-    color: var(--text-3);
-    font-size: 12.5px;
 }
 
 /* ---- Sign-in page ------------------------------------------------------------ */
@@ -2145,13 +2133,8 @@ a.bars__label:hover {
 }
 
 .auth-card h1 {
-    margin-bottom: 4px;
-    font-size: 22px;
-}
-
-.auth-card .lead {
     margin-bottom: 20px;
-    color: var(--text-2);
+    font-size: 22px;
 }
 
 .auth-card .button--primary {
