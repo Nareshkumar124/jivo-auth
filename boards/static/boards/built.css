@@ -1,0 +1,345 @@
+/*
+ * built.css: a built board's frame, and the four hues ops-board.css does not
+ * define.
+ *
+ * A port of the viewer half of the factory's builder.css, plus the Plant
+ * board's accent block. Everything that is a TILE is `.ops-grp` from
+ * ops-board.css, unchanged: two boards inventing their own teal would be two
+ * teals, and a card that looks subtly different depending on which board it
+ * was dragged onto is worse than one that cannot be dragged at all.
+ *
+ * So this file is the frame: the grid the cards sit on, the surface and the
+ * density, and the handful of visualisation shapes the shared stylesheet had
+ * no reason to define (a generic table, a matrix, a row of small figures).
+ *
+ * Every length is `calc(N * var(--u))`, the board's scoped root unit, so the
+ * frame scales with the screen exactly as the tiles inside it do. `cbx-`
+ * prefixes everything; `ops-` stays readable as "this came from the wall
+ * boards".
+ */
+
+/* ───────── the four hues the wall boards paint that ops-board.css lacks ─────────
+   Copied from the factory's plant-board.css. Deliberately no green: rule 4
+   reserves it for condition, and a green Production band would make every
+   healthy tag inside it invisible. */
+
+/* Purchase — cyan */
+.ops-b-purchase {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #0e7490;
+  --d2: #06b6d4;
+  --d3: #67e8f9;
+  --d4: #cffafe;
+  --ga: rgba(6, 182, 212, 0.3);
+  --gb: rgba(6, 182, 212, 0.2);
+  --soft: rgba(6, 182, 212, 0.07);
+  --tint1: rgba(6, 182, 212, 0.2);
+  --tint2: rgba(6, 182, 212, 0.09);
+  --glow: rgba(6, 182, 212, 0.26);
+}
+
+/* Store — blue */
+.ops-b-store {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #1e40af;
+  --d2: #3b82f6;
+  --d3: #93c5fd;
+  --d4: #dbeafe;
+  --ga: rgba(59, 130, 246, 0.28);
+  --gb: rgba(59, 130, 246, 0.18);
+  --soft: rgba(59, 130, 246, 0.07);
+  --tint1: rgba(59, 130, 246, 0.2);
+  --tint2: rgba(59, 130, 246, 0.09);
+  --glow: rgba(59, 130, 246, 0.26);
+}
+
+/* Production — indigo */
+.ops-b-production {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #3730a3;
+  --d2: #6366f1;
+  --d3: #a5b4fc;
+  --d4: #e0e7ff;
+  --ga: rgba(99, 102, 241, 0.28);
+  --gb: rgba(99, 102, 241, 0.18);
+  --soft: rgba(99, 102, 241, 0.07);
+  --tint1: rgba(99, 102, 241, 0.2);
+  --tint2: rgba(99, 102, 241, 0.09);
+  --glow: rgba(99, 102, 241, 0.26);
+}
+
+/* Shifting — violet */
+.ops-b-shifting {
+  --gm: rgba(255, 255, 255, 0.55);
+  --d1: #5b21b6;
+  --d2: #8b5cf6;
+  --d3: #c4b5fd;
+  --d4: #ede9fe;
+  --ga: rgba(139, 92, 246, 0.28);
+  --gb: rgba(139, 92, 246, 0.18);
+  --soft: rgba(139, 92, 246, 0.07);
+  --tint1: rgba(139, 92, 246, 0.2);
+  --tint2: rgba(139, 92, 246, 0.09);
+  --glow: rgba(139, 92, 246, 0.26);
+}
+
+/* ───────── the viewer ───────── */
+
+/* How much air a tile gets. The gap doubles as the grid's padding budget. */
+.cbx-view.cbx-d-compact {
+  --cbx-gap: calc(0.45 * var(--u));
+}
+.cbx-view.cbx-d-normal {
+  --cbx-gap: calc(0.8 * var(--u));
+}
+.cbx-view.cbx-d-roomy {
+  --cbx-gap: calc(1.3 * var(--u));
+}
+
+/* A wall board does not scroll: it is exactly its viewport, and a card with
+   too much in it is clipped by its own tile rather than pushing the bottom
+   row off the screen. Same contract as `.ops-stack`. */
+.cbx-view.cbx-wall {
+  height: 100%;
+  overflow: hidden;
+}
+
+/*
+ * The one place a built board departs from the wall boards' light surface:
+ * for the screens by the lines, where the room is not bright. The tiles keep
+ * their own light card faces (that is the shared tile); only the page around
+ * them changes, so the board's radial washes go too.
+ */
+.cbx-view.cbx-s-dark {
+  background: #0e1726;
+}
+
+.cbx-view.cbx-s-dark .ops-topbar {
+  background: #16233a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.cbx-view.cbx-s-dark .ops-title b,
+.cbx-view.cbx-s-dark .ops-clock {
+  color: #e2e8f0;
+}
+.cbx-view.cbx-s-dark .ops-title span {
+  color: #94a3b8;
+}
+
+/* The heading inside the topbar keeps the topbar's own type; the class is a
+   hook for the dark surface and for anybody reading the DOM. */
+.cbx-view-head b {
+  letter-spacing: -0.03em;
+}
+
+/*
+ * The grid. `minmax(0, 1fr)` tracks are set inline from the board's own
+ * columns and rows, for the reason ops-board.css spells out: a bare `1fr`
+ * has its own content as its floor, so one crowded card grows its row and
+ * carries the bottom row off the bottom of the display.
+ */
+.cbx-view-grid {
+  position: relative;
+  display: grid;
+  gap: var(--cbx-gap, calc(0.8 * var(--u)));
+  min-height: 0;
+  min-width: 0;
+}
+
+/* A card is `.ops-grp` inside this; the wrapper only carries the hue and the
+   grid position, so it must not add a box of its own. */
+.cbx-cell {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+}
+
+.cbx-cell > .ops-grp {
+  height: 100%;
+  min-height: 0;
+}
+
+.cbx-canvas-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(2 * var(--u));
+  text-align: center;
+  font-size: calc(1.1 * var(--u));
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+/* ───────── a card that was not read ─────────
+   The tile keeps its name row so the grid still reads as a grid, and the
+   unread notice takes the three rows under it. The reason is printed on the
+   tile as well as in the meta strip: on a wall the strip is small, and a
+   dark tile with no explanation beside it is the thing this app exists to
+   prevent. */
+.cbx-grp-unread {
+  grid-template-rows: var(--r-head) var(--r-sub) 1fr;
+}
+.cbx-grp-unread .cbx-unread {
+  min-height: 0;
+  overflow: hidden;
+}
+.cbx-unread b {
+  display: block;
+}
+
+/* No board at all: one notice in the middle of the stage. */
+.cbx-no-board {
+  min-height: 0;
+  padding: calc(3 * var(--u)) calc(2 * var(--u));
+}
+.cbx-no-board b {
+  font-size: calc(1.6 * var(--u));
+  margin-bottom: calc(0.5 * var(--u));
+}
+
+/* ───────── the visualisation shapes the shared stylesheet had no reason to define ───────── */
+
+.cbx-split {
+  display: flex;
+  align-items: flex-end;
+  gap: calc(1.2 * var(--u));
+  padding-top: calc(0.3 * var(--u));
+}
+
+.cbx-split > div {
+  min-width: 0;
+}
+
+.cbx-split b {
+  display: block;
+  font-size: calc(1.7 * var(--u));
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cbx-split em {
+  display: block;
+  font-style: normal;
+  font-size: calc(0.86 * var(--u));
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cbx-table-wrap {
+  min-height: 0;
+  /* Clipped, never scrolled. A card is a headline with its evidence under
+     it; a table long enough to scroll on a wall nobody is standing at is a
+     table nobody will ever see the bottom of, and the card should send
+     fewer rows. */
+  overflow: hidden;
+}
+
+.cbx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(0.88 * var(--u));
+  font-variant-numeric: tabular-nums;
+}
+
+.cbx-table th {
+  font-size: calc(0.76 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding-bottom: calc(0.25 * var(--u));
+  border-bottom: 1px solid var(--hair);
+  white-space: nowrap;
+}
+
+.cbx-table td {
+  padding: calc(0.22 * var(--u)) 0;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--tint2);
+  /* One line, clipped: a line name out of SAP is routinely longer than the
+     column it has to fit, and the full text stays on the cell's title. */
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cbx-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.cbx-table td:first-child {
+  color: var(--ink);
+  font-weight: 550;
+}
+
+.cbx-matrix th[scope='row'] {
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: calc(0.86 * var(--u));
+  color: var(--ink);
+  border-bottom: 1px solid var(--tint2);
+  padding: calc(0.22 * var(--u)) 0;
+}
+
+.cbx-nil {
+  color: var(--ink-3);
+}
+
+.cbx-caption,
+.cbx-note {
+  margin-top: calc(0.25 * var(--u));
+  font-size: calc(0.8 * var(--u));
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+
+/* ───────── cards that are furniture rather than figures ─────────
+   The section label: the domain hue at full strength, the name in white, and
+   no room left for a figure that was never coming. The one rule that makes a
+   label look like the rail it replaces. */
+.cbx-cell[data-card='section_label'] > .ops-grp {
+  background: linear-gradient(160deg, var(--d1), color-mix(in srgb, var(--d1) 76%, #000));
+  border: 0;
+  box-shadow: none;
+  /* Collapse the four-row tile: with no figure and no visualisation, the
+     name is the whole card and should sit in the middle of it. */
+  grid-template-rows: 1fr;
+  align-content: center;
+}
+
+.cbx-cell[data-card='section_label'] .ops-nm {
+  font-size: calc(1.5 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  /* Wraps, unlike a tile name: this IS the content. */
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.cbx-cell[data-card='section_label'] .ops-sub,
+.cbx-cell[data-card='section_label'] .ops-val,
+.cbx-cell[data-card='section_label'] .ops-viz,
+.cbx-cell[data-card='section_label'] .ops-tag {
+  display: none;
+}
+
+/* ───────── a refresh must not replay the entrance ─────────
+   The fragment is re-inserted every refresh. On the first paint of a board
+   the bars grow in, as they do on the factory's wall; on every refresh of
+   the SAME board built.js marks the view settled and the bars just update,
+   because a wall whose every bar re-grows from zero once a minute reads as
+   a screen that keeps reloading. */
+.cbx-view[data-settled='yes'] .ops-meter i,
+.cbx-view[data-settled='yes'] .ops-bars i,
+.cbx-view[data-settled='yes'] .ops-prow .b i {
+  animation: none;
+}

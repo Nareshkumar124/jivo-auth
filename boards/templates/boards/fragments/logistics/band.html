@@ -1,0 +1,23 @@
+{% comment %}
+  OpsBand: one domain of the board -- a coloured rail, its tiles, and who is
+  on shift. The rail is the only place the domain is named; the tiles stay
+  white and every tint inside them is the band's own hue.
+
+  The column template comes from the service (four equal tracks, fewer
+  where this plant hides a tile), always written `minmax(0, 1fr)`: a bare
+  `1fr` would let a tile full of figures push the people strip off the
+  band's right-hand edge.
+{% endcomment %}
+<section class="ops-band ops-b-{{ band.domain }}" data-band="{{ band.key }}">
+  <div class="ops-rail">
+    <p>{{ band.title }}{% if band.scope %} <em>{{ band.scope }}</em>{% endif %}</p>
+  </div>
+
+  <div class="ops-groups" style="grid-template-columns: {{ band.columns|default:'repeat(4, minmax(0, 1fr))' }}">
+    {% for tile in band.tiles %}
+    {% include "boards/fragments/logistics/tile.html" %}
+    {% endfor %}
+  </div>
+
+  {% include "boards/fragments/logistics/people.html" with strip=band.people %}
+</section>

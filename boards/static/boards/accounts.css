@@ -1,0 +1,537 @@
+/*
+ * The accounts board, for the wall.
+ *
+ * The factory's accounts page is a working page, read at arm's length with
+ * the app's generic Card and Badge components; this is that page drawn
+ * inside the shared `.ops-board` frame for a corridor television. Every
+ * length is `calc(N * var(--u))` so it scales with the screen like the other
+ * boards, and the body divides the viewport exactly: nothing scrolls, lists
+ * are cut and say so.
+ *
+ * The palette is the page's: a warm paper ground, white cards, one deep
+ * green that carries the single figure the board exists for (cash in hand)
+ * and a red reserved for a balance below zero.
+ */
+
+.ops-board.ab-board {
+  --ab-ground: #f6f4ef;
+  --ab-card: #ffffff;
+  --ab-ink: #1c1b18;
+  --ab-ink-soft: #6b6862;
+  --ab-line: #e4e0d7;
+  --ab-accent: #14563c;
+  --ab-accent-ink: #ffffff;
+  --ab-alert: #a12a1f;
+  --ab-alert-soft: #f9ebe8;
+  --ab-ok: #14563c;
+
+  /* The four breakdown lines, as the factory's BUCKET_COLOURS name them:
+     chosen so no two are confusable under deuteranopia or protanopia; the
+     pair that would collide, red against green, is separated by the amber
+     and the slate between them. Keyed by the server's bucket key below, so
+     a renamed label cannot silently recolour a line. */
+  --ab-bar-1: #14563c;
+  --ab-bar-2: #3f7d8c;
+  --ab-bar-3: #b8863b;
+  --ab-bar-4: #a12a1f;
+  --ab-bar-other: #9a968d;
+
+  background: var(--ab-ground);
+  color: var(--ab-ink);
+}
+
+/* `hidden` must beat any display the classes below set: the rotation hides
+   every breakdown line but one with it. */
+.ab-board [hidden] {
+  display: none !important;
+}
+
+/* The topbar's book-check tile takes the verdict's colour on its edge. */
+.ab-board .ops-tot.ab-tot--ok {
+  border-left-color: var(--ab-ok);
+}
+.ab-board .ops-tot.ab-tot--bad {
+  border-left-color: var(--ab-alert);
+}
+.ab-board .ops-tot.ab-tot--bad .n {
+  color: var(--ab-alert);
+}
+
+/* ───────── the three columns ───────── */
+
+/* Rail, detail, lists: the page's own proportions. The rail is the
+   narrowest because its cards carry figures that must not reflow mid-read;
+   the lists take the slack. `minmax(0, …)` throughout, so a long name or a
+   tall list is clipped by its own panel rather than pushing the board off
+   the screen. */
+.ab {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.9fr) minmax(0, 1.6fr);
+  gap: calc(0.8 * var(--u));
+  min-height: 0;
+}
+
+.ab-rail {
+  display: grid;
+  grid-template-rows: repeat(4, auto) minmax(0, 1fr);
+  gap: calc(0.6 * var(--u));
+  min-height: 0;
+}
+
+.ab-middle {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: calc(0.6 * var(--u));
+  min-height: 0;
+}
+
+.ab-tables {
+  display: grid;
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: calc(0.6 * var(--u));
+  min-height: 0;
+}
+
+/* ───────── stat cards ───────── */
+
+.ab-stat {
+  background: var(--ab-card);
+  border: 1px solid var(--ab-line);
+  border-radius: calc(0.75 * var(--u));
+  padding: calc(0.7 * var(--u)) calc(0.9 * var(--u)) calc(0.6 * var(--u));
+  min-width: 0;
+}
+
+.ab-stat__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--u));
+}
+
+.ab-stat__label {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ab-stat__hint {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  white-space: nowrap;
+}
+
+.ab-stat__value {
+  font-size: calc(2.3 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-top: calc(0.3 * var(--u));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Which kind of number this is. Three cards say "in September" and one
+   says "closing balance, all time"; it is the only thing on the rail that
+   stops a reader subtracting a balance from a flow. */
+.ab-stat__period {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  font-weight: 600;
+  margin-top: calc(0.15 * var(--u));
+}
+
+/* The companion figure, bottom right: right-aligned to sit under the
+   value's last digit, so the eye that has just read the big number finds it
+   without travelling back across the card. */
+.ab-stat__note {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  line-height: 1.3;
+  margin-top: calc(0.3 * var(--u));
+  text-align: right;
+}
+
+/* Cash in hand, healthy: the one figure the board exists for. */
+.ab-stat--filled {
+  background: var(--ab-accent);
+  border-color: var(--ab-accent);
+  color: var(--ab-accent-ink);
+}
+.ab-stat--filled .ab-stat__label,
+.ab-stat--filled .ab-stat__hint,
+.ab-stat--filled .ab-stat__period,
+.ab-stat--filled .ab-stat__note {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* Cash in hand, negative. Deliberately loud, and deliberately not hidden:
+   a book below zero is the condition somebody has to act on, and a screen
+   that clamps it at zero looks healthiest exactly when it is not. */
+.ab-stat--alert {
+  background: var(--ab-alert-soft);
+  border-color: var(--ab-alert);
+}
+.ab-stat--alert .ab-stat__value {
+  color: var(--ab-alert);
+}
+
+.ab-stat--unread {
+  display: grid;
+  min-height: calc(5 * var(--u));
+}
+
+/* ───────── panels ───────── */
+
+.ab-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: var(--ab-card);
+  border: 1px solid var(--ab-line);
+  border-radius: calc(0.75 * var(--u));
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+.ab-details {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.ab-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(0.6 * var(--u));
+  padding: calc(0.45 * var(--u)) calc(0.9 * var(--u));
+  border-bottom: 1px solid var(--ab-line);
+}
+
+.ab-panel__head h3 {
+  font-size: calc(1.15 * var(--u));
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ab-panel__total {
+  color: var(--ab-ink);
+  font-size: calc(1 * var(--u));
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.ab-panel__total-label {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.75 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ab-panel__body {
+  padding: calc(0.3 * var(--u)) calc(0.45 * var(--u)) calc(0.5 * var(--u));
+  overflow: hidden;
+  min-height: 0;
+}
+
+.ab-panel__body .ops-unread {
+  height: 100%;
+}
+
+/* ───────── tables ───────── */
+
+/* Fixed layout: the name column takes the slack and the figures sit at the
+   right edge where they can be compared straight down. A long name is cut
+   with an ellipsis; the board never scrolls sideways. */
+.ab-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.ab-table th,
+.ab-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ab-table th:not(:first-child),
+.ab-table td:not(:first-child) {
+  width: 26%;
+}
+
+.ab-table thead th {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.75 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: calc(0.25 * var(--u)) calc(0.55 * var(--u));
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ab-table tbody td {
+  border-top: 1px solid var(--ab-line);
+  font-size: calc(1.05 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.55 * var(--u));
+}
+
+.ab-right {
+  text-align: right;
+}
+
+/* Account names are long and these panels are narrow, so the first column
+   may wrap here: there is nothing to compare down it. */
+.ab-table--tight {
+  margin-top: calc(0.4 * var(--u));
+}
+.ab-table--tight td {
+  font-size: calc(0.95 * var(--u));
+  padding: calc(0.2 * var(--u)) 0;
+}
+.ab-table--tight td:first-child {
+  white-space: normal;
+}
+.ab-table--tight th:not(:first-child),
+.ab-table--tight td:not(:first-child) {
+  width: 36%;
+}
+
+.ab-subhead {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: calc(0.25 * var(--u)) calc(0.55 * var(--u)) 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ab-empty,
+.ab-more,
+.ab-other,
+.ab-masked {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.9 * var(--u));
+  line-height: 1.4;
+  padding: calc(0.4 * var(--u)) calc(0.55 * var(--u)) 0;
+}
+
+.ab-masked {
+  border-top: 1px solid var(--ab-line);
+  margin-top: calc(0.4 * var(--u));
+  padding-top: calc(0.35 * var(--u));
+  font-size: calc(0.8 * var(--u));
+}
+
+/* Out with people, and owed back to them, side by side: two answers to one
+   question, never one list, because the money points opposite ways. When
+   nobody is owed anything the single column takes the whole width. */
+.ab-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(16 * var(--u)), 1fr));
+  gap: calc(0.4 * var(--u)) calc(1 * var(--u));
+}
+
+.ab-people__col {
+  min-width: 0;
+}
+
+/* ───────── the breakdown bars ───────── */
+
+.ab-bucket {
+  display: block;
+  padding: calc(0.4 * var(--u)) calc(0.55 * var(--u));
+}
+
+.ab-bucket__top {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(0.6 * var(--u));
+}
+
+.ab-bucket__label {
+  font-size: calc(1.05 * var(--u));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ab-bucket__amount {
+  font-size: calc(1.05 * var(--u));
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.ab-bucket__track {
+  display: block;
+  height: calc(0.4 * var(--u));
+  margin-top: calc(0.3 * var(--u));
+  border-radius: 999px;
+  background: var(--ab-line);
+  overflow: hidden;
+}
+
+.ab-bucket__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ab-bar-other);
+}
+
+/* The colour follows the bucket key, exactly as BUCKET_COLOURS does. A
+   bucket the server adds before this sheet knows it keeps the fallback. */
+.ab-bucket__fill[data-bucket='vendor_ap'],
+.ab-detail__swatch[data-bucket='vendor_ap'] {
+  background: var(--ab-bar-1);
+}
+.ab-bucket__fill[data-bucket='expenses'],
+.ab-detail__swatch[data-bucket='expenses'] {
+  background: var(--ab-bar-2);
+}
+.ab-bucket__fill[data-bucket='salary_adjustment'],
+.ab-detail__swatch[data-bucket='salary_adjustment'] {
+  background: var(--ab-bar-3);
+}
+.ab-bucket__fill[data-bucket='payment_pending'],
+.ab-detail__swatch[data-bucket='payment_pending'] {
+  background: var(--ab-bar-4);
+}
+
+/* A line the register keeps no source for. Never a 0.00. */
+.ab-bucket__nosource {
+  display: block;
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+  font-style: italic;
+  margin-top: calc(0.2 * var(--u));
+}
+
+/* ───────── the breakdown detail (rotating) ───────── */
+
+.ab-details__auto {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.85 * var(--u));
+}
+
+/* How long this line has left. Deliberately almost invisible: it is the
+   only moving thing on a screen full of money figures, and anything louder
+   than a hairline pulls the eye off every one of them. */
+.ab-stage__progress {
+  height: calc(0.2 * var(--u));
+  background: var(--ab-line);
+  overflow: hidden;
+}
+
+.ab-stage__fill {
+  display: block;
+  height: 100%;
+  background: var(--ab-accent);
+  /* Matches the script's tick, so the bar creeps rather than stepping. */
+  transition: width 100ms linear;
+}
+
+.ab-details__body {
+  padding: calc(0.7 * var(--u)) calc(0.9 * var(--u)) calc(0.8 * var(--u));
+}
+
+.ab-detail__title {
+  display: flex;
+  align-items: center;
+  gap: calc(0.45 * var(--u));
+  font-size: calc(1.45 * var(--u));
+  font-weight: 700;
+  margin-top: calc(0.15 * var(--u));
+}
+
+.ab-detail__swatch {
+  display: inline-block;
+  width: calc(0.7 * var(--u));
+  height: calc(0.7 * var(--u));
+  border-radius: 999px;
+  background: var(--ab-bar-other);
+  flex: none;
+}
+
+.ab-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(0.5 * var(--u)) calc(1 * var(--u));
+  margin-top: calc(0.7 * var(--u));
+}
+
+.ab-field {
+  display: flex;
+  flex-direction: column;
+  gap: calc(0.1 * var(--u));
+  min-width: 0;
+}
+
+.ab-field__label {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.75 * var(--u));
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ab-field__value {
+  font-size: calc(1.5 * var(--u));
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The caveat travels with the number. It is not decoration. */
+.ab-detail__note {
+  color: var(--ab-ink-soft);
+  font-size: calc(0.95 * var(--u));
+  line-height: 1.45;
+  margin-top: calc(0.7 * var(--u));
+}
+
+/* ───────── the book's own check ───────── */
+
+.ab-recon__table {
+  margin-top: 0;
+}
+
+.ab-recon__table td {
+  padding: calc(0.18 * var(--u)) calc(0.55 * var(--u));
+}
+
+.ab-recon__result td {
+  border-top: 1px solid var(--ab-ink);
+  font-weight: 700;
+}
+
+.ab-recon__verdict {
+  font-size: calc(0.85 * var(--u));
+  line-height: 1.4;
+  padding: calc(0.4 * var(--u)) calc(0.55 * var(--u)) 0;
+}
+.ab-recon__verdict--ok {
+  color: var(--ab-ok);
+}
+.ab-recon__verdict--bad {
+  color: var(--ab-alert);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The script stops rotating; this stops the bar creeping. */
+  .ab-stage__fill {
+    transition: none;
+  }
+}

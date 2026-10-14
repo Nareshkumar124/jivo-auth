@@ -1,0 +1,31 @@
+{% comment %}
+  What a board could not read, and the caveats on what it did. Floats over
+  the board's bottom edge so it takes no height: every board here sizes its
+  bands to divide the viewport exactly, and a footer row would push the last
+  band off the screen.
+
+  Up to four unread sections get a chip each; past that, one chip counts
+  them (each one is listed on hover), so a board with its sources down
+  isn't buried under its own chips. The tiles themselves say "not read".
+
+  Include at the end of a fragment: {% include "boards/fragments/_meta.html" %}
+{% endcomment %}
+{% load boards %}
+{% if meta.degraded or meta.warnings %}
+<div class="bcx-meta" role="status" aria-live="polite">
+  {% if meta.degraded|length > 4 %}
+  <span class="bcx-meta__chip bcx-meta__chip--degraded" title="{% for name in meta.degraded %}{{ name|section_label }}: {{ meta.reasons|get:name|default:'could not be read' }}{% if not forloop.last %}&#10;{% endif %}{% endfor %}">
+    <i></i>{{ meta.degraded|length }} sections not read
+  </span>
+  {% else %}
+  {% for name in meta.degraded %}
+  <span class="bcx-meta__chip bcx-meta__chip--degraded" title="{{ meta.reasons|get:name|default:'could not be read' }}">
+    <i></i>{{ name|section_label }}: not read
+  </span>
+  {% endfor %}
+  {% endif %}
+  {% for warning in meta.warnings %}
+  <span class="bcx-meta__chip" title="{{ warning }}">{{ warning }}</span>
+  {% endfor %}
+</div>
+{% endif %}

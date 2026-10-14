@@ -63,6 +63,7 @@ to the responsible team and administrators.
 | Team overview | `/team/`, `/team/<id>/` | Team members; managers also get the reassign tool. |
 | Notifications | `/notifications/` | Everyone. |
 | Administration | `/manage/…` | Administrators: all tickets, departments, applications, teams and members, people and roles, reports, activity history, settings. |
+| Dashboard | `/dashboards/…` | People with dashboard access: the JI Factory app's boards and the wall carousel ([guide](board-carousel.md)). |
 
 ## Workflow
 
@@ -146,7 +147,7 @@ Everything under **Administration** in the sidebar, for administrators:
 | **Departments** | Add, edit, deactivate; their applications, pending and total tickets, default team. |
 | **Applications** | Department, responsible team and "accepts tickets" per application, with ticket counts; filters for applications that can't be routed; add applications that only need tickets. |
 | **Teams and members** | Create and edit teams; add members by email, make them managers, remove them (their active tickets go back to the queue); move a member's tickets when they're away; the team's applications and workload. |
-| **People and roles** | Everyone with their ticket role, teams and workload; make someone an administrator or remove the role. Accounts themselves are created in /admin/. |
+| **People and roles** | Everyone with their ticket role, teams, dashboard access and workload; make someone an administrator, give or remove access to the JI dashboards. Accounts themselves are created in /admin/. |
 | **Reports and analytics** | Date range, department, application and team filters; tickets over time; by department, application, team, status and priority; team members' workload; average first response and resolution; share resolved within SLA; pending and overdue per day; CSV exports. |
 | **Activity history** | Every ticket event, searchable by ticket, person and action, with date limits. |
 | **Settings** | Deadline hours per priority, what members may do, the reopen window, automatic closing, attachment limits, team emails. |

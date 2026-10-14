@@ -146,6 +146,7 @@ Container settings, set in `.env`:
 |---|---|---|
 | `GUNICORN_BIND` | `127.0.0.1:8000` | Address gunicorn listens on. With host networking this is the host's address, so keep it on `127.0.0.1`. |
 | `WEB_CONCURRENCY` | `3` | Number of gunicorn worker processes. |
+| `GUNICORN_THREADS` | `4` | Requests each worker serves at once (gunicorn's `gthread` workers), so a dashboard waiting on SAP or the factory database doesn't hold up sign-ins. |
 | `RUN_MIGRATIONS` | `1` | Apply migrations on start. Set `0` to run them yourself: `docker compose run --rm --entrypoint python auth manage.py migrate` (the entrypoint ignores its arguments). |
 | `APP_UID` / `APP_GID` | `10001` | User the container runs as ([step 3](#3-create-the-signing-key)). |
 
@@ -279,7 +280,7 @@ be undone.
 | **Backups** | Back up the host database, e.g. `pg_dump -Fc -h 127.0.0.1 -U jivo_auth jivo_auth > jivo_auth.dump` from cron, and `jwt_private.pem`. |
 | **Rotating the signing key** | Replace `jwt_private.pem` and restart. Only one key is published at a time, so **every user is logged out** and applications fetch the new key on the next token. Do it only if the key may have leaked. |
 | **Changing `PUBLIC_URL`** | It is the token issuer. Every application's `JIVO_AUTH["URL"]` must change at the same time. |
-| **Scaling** | `WEB_CONCURRENCY` (default 3) sets the gunicorn workers. Rate-limit counters live in PostgreSQL, so they're shared between workers. |
+| **Scaling** | `WEB_CONCURRENCY` (default 3) sets the gunicorn workers and `GUNICORN_THREADS` (default 4) the requests each serves at once; every request in flight holds one database connection. Rate-limit counters live in PostgreSQL, so they're shared between workers. |
 | **Emails** | Sent while the request waits, so a slow SMTP server slows forgot-password and registration. Keep `EMAIL_TIMEOUT` low (default 10 seconds). |
 | **Audit log retention** | Run `docker compose exec -T auth python manage.py prune_audit_events` daily from cron. It keeps `AUDIT_LOG_RETENTION_DAYS` (365) days. |
 | **Logs** | Everything goes to stderr, including server errors and gunicorn's access log: `docker compose logs auth`. Docker rotates them at 5 × 10 MB (`logging:` in `docker-compose.yml`). |

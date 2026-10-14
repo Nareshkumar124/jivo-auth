@@ -1,0 +1,9 @@
+{% comment %}
+  OpsBars: the trailing days as columns, each a share of the best day in the
+  window, the last one drawn as today. A day of nothing has neither a stub
+  nor a figure: the empty column already says it.
+{% endcomment %}
+<div>
+  <div class="ops-bars">{% for day in viz.days %}<div{% if day.now %} class="ops-now"{% endif %}>{% if day.value %}<em class="ops-bval">{{ day.value }}</em>{% endif %}<i style="height: {{ day.height }}%; animation-delay: {{ day.delay }}s"></i></div>{% endfor %}</div>
+  <div class="ops-blab">{% for day in viz.days %}<span{% if day.now %} class="ops-now"{% endif %}>{{ day.label }}</span>{% endfor %}</div>
+</div>

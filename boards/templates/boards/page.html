@@ -1,0 +1,25 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block breadcrumbs %}<ol class="breadcrumbs"><li><a href="{% url 'boards:index' %}">JI dashboards</a></li><li aria-current="page">{{ heading }}</li></ol>{% endblock %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1>{{ heading }}</h1>
+      <p class="page-head__sub">{{ description }} Refreshes by itself every minute.</p>
+    </div>
+    <div class="page-head__actions">
+      <button type="button" class="button button--primary" data-fullscreen-target="#board-frame">{% icon "maximize" 16 %}Full screen</button>
+      <a class="button" href="{{ screen_url }}" target="_blank" rel="noopener">{% icon "external" 16 %}New tab</a>
+      <a class="button" href="{% url 'boards:carousel' %}">{% icon "monitor" 16 %}Wall carousel</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="board-frame">
+  <iframe id="board-frame" src="{{ frame_url }}" title="{{ heading }}" allowfullscreen></iframe>
+</div>
+<p class="board-frame__note">Drawn for a 16:9 screen, like the factory's wall boards. On a small screen use Full screen or a larger window.</p>
+{% endblock %}

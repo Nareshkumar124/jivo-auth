@@ -1,0 +1,244 @@
+{% comment %}
+  The Admin Control board: the factory's AdminControlDashboardPage, drawn for
+  the wall.
+
+  Three bands, in the order an owner asks about them: what the plant MADE and
+  SHIPPED, what is STANDING in it, and what it COST, then an action centre
+  that turns the first three into things to do. Every figure and every alert
+  arrives decided from the service; ``boards_admin.present`` makes the page's
+  own choices (tags, tones, bar widths, the donut's arcs), so this file is
+  markup and nothing else.
+
+  A figure with no source renders as a rule, never a zero; a capacity nobody
+  rated draws a hatched track, not an empty one; a section that is None is
+  its tile with a rule for a figure and "Not read" with the reason.
+{% endcomment %}
+{% load boards boards_admin %}
+{% admin_view board as v %}
+{% with t=v.topbar reasons=meta.reasons %}
+<div class="ops-board admin-board">
+  <div class="ops-board__inner">
+    <header class="ops-topbar">
+      <div class="ops-pill-live" data-state="live"><i></i>LIVE</div>
+      <div class="ops-title">
+        <b title="{{ slide.label|default:'Admin Control' }}">{{ slide.label|default:"Admin Control" }}</b>
+        <span title="{{ t.scope }}">{{ t.scope }}</span>
+      </div>
+      <div class="ops-chips">
+        {% for chip in t.chips %}<div class="ops-chip" title="{{ chip.label }} {{ chip.value }}"><em>{{ chip.label }}</em> {{ chip.value }}</div>{% endfor %}
+      </div>
+      <div class="ops-totals">
+        {% for total in t.totals %}
+        <div class="ops-tot">
+          <div class="cap">{{ total.caption }}</div>
+          <div class="n{% if total.missing %} ops-nil{% endif %}">{% if total.missing %}—{% else %}{{ total.value }}{% endif %}</div>
+          <div class="s">{{ total.sub }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="ops-clock">
+        <div class="t" data-clock>{{ meta.generated_at|clock }}</div>
+        <div class="d">{{ t.date }}</div>
+      </div>
+    </header>
+
+    <main class="ops-stack">
+      {# ═════ OUTPUT ═════ #}
+      <section class="ops-band adm-band ops-b-dispatch" data-band="output">
+        <div class="ops-rail"><p>Output <em>month to date</em></p></div>
+        <div class="ops-groups adm-cols-output">
+
+          {% with p=v.production %}
+          <div class="ops-grp adm-has-corner" data-tile="production">
+            {% if p %}{% include "boards/fragments/admin/_corner.html" with corner=p.corner %}{% endif %}
+            <div class="ops-grow">
+              <b class="ops-nm">Total production</b>
+              {% if p %}<span class="ops-tag ops-t-{{ p.tag.tone }}">{{ p.tag.label }}</span>{% endif %}
+            </div>
+            <div class="ops-sub"></div>
+            <div class="ops-val">{% if p %}<b>{{ p.value }}</b><u>tonnes</u>{% else %}<b class="ops-nil">—</b>{% endif %}</div>
+            <div class="ops-viz">
+              {% if p %}{% include "boards/fragments/admin/_meter.html" with meter=p.meter %}
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"production" default="SAP movements could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+          {% with d=v.dispatch %}
+          <div class="ops-grp adm-has-corner" data-tile="dispatch">
+            {% if d %}{% include "boards/fragments/admin/_corner.html" with corner=d.corner %}{% endif %}
+            <div class="ops-grow">
+              <b class="ops-nm">Total dispatch</b>
+              {% if d.tag %}<span class="ops-tag ops-t-{{ d.tag.tone }}">{{ d.tag.label }}</span>{% endif %}
+            </div>
+            <div class="ops-sub">{% if d %}{{ d.sub }}{% endif %}</div>
+            <div class="ops-val">{% if d %}<b>{{ d.value }}</b><u>tonnes</u>{% else %}<b class="ops-nil">—</b>{% endif %}</div>
+            <div class="ops-viz">
+              {% if d %}
+              <div>
+                {% include "boards/fragments/admin/_meter.html" with meter=d.meter %}
+                <p class="ops-note">{{ d.note }}</p>
+              </div>
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"dispatch" default="The gate register could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+        </div>
+      </section>
+
+      {# ═════ STORAGE ═════ #}
+      <section class="ops-band adm-band ops-b-warehouse" data-band="storage">
+        <div class="ops-rail"><p>Storage <em>on hand now</em></p></div>
+        <div class="ops-groups adm-cols-storage">
+
+          {% with s=v.fg %}
+          <div class="ops-grp adm-has-corner" data-tile="fg_storage">
+            {% if s %}{% include "boards/fragments/admin/_corner.html" with corner=s.corner %}{% endif %}
+            <div class="ops-grow">
+              <b class="ops-nm">Total FG storage</b>
+              {% if s.tag %}<span class="ops-tag ops-t-{{ s.tag.tone }}">{{ s.tag.label }}</span>{% endif %}
+            </div>
+            <div class="ops-sub">{% if s %}{{ s.sub }}{% endif %}</div>
+            <div class="ops-val">{% if s %}<b>{{ s.value }}</b><u>tonnes</u>{% else %}<b class="ops-nil">—</b>{% endif %}</div>
+            <div class="ops-viz">
+              {% if s %}
+              <div>
+                <div class="ops-pair">
+                  {% for row in s.rows %}
+                  <div class="ops-prow"><em title="{{ row.label }}">{{ row.label }}</em><div class="b"><i class="ops-f-{{ row.fill }}" style="width: {{ row.width }}%"></i></div><strong>{{ row.figure }}</strong></div>
+                  {% endfor %}
+                </div>
+                {% if s.note %}<div class="ops-mkey"><span class="ops-k-{{ s.note.fill }}">{{ s.note.label }}<b>{{ s.note.figure }}</b></span></div>{% endif %}
+              </div>
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"fg_storage" default="SAP stock could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+          {% with s=v.pm %}
+          <div class="ops-grp adm-has-corner" data-tile="pm_storage">
+            {% if s %}{% include "boards/fragments/admin/_corner.html" with corner=s.corner %}{% endif %}
+            <div class="ops-grow"><b class="ops-nm">Total PM storage</b></div>
+            <div class="ops-sub"></div>
+            <div class="ops-val">{% if s %}<b>{{ s.value }}</b>{% if s.unit %}<u>{{ s.unit }}</u>{% endif %}{% else %}<b class="ops-nil">—</b>{% endif %}</div>
+            <div class="ops-viz">
+              {% if s %}
+              <div>
+                {% if s.unknown %}<div class="ops-meter adm-unknown"></div>
+                {% else %}{% include "boards/fragments/admin/_meter.html" with meter=s.meter %}{% endif %}
+              </div>
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"pm_storage" default="SAP stock could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+          {% with s=v.oil %}
+          <div class="ops-grp adm-has-corner" data-tile="oil_storage">
+            {% if s %}{% include "boards/fragments/admin/_corner.html" with corner=s.corner %}{% endif %}
+            <div class="ops-grow">
+              <b class="ops-nm">Oil storage</b>
+              {% if s %}<span class="ops-tag ops-t-{{ s.tag.tone }}">{{ s.tag.label }}</span>{% endif %}
+            </div>
+            <div class="ops-sub">{% if s %}{{ s.sub }}{% endif %}</div>
+            <div class="ops-val">{% if s %}<b>{{ s.value }}</b><u>tonnes</u>{% else %}<b class="ops-nil">—</b>{% endif %}</div>
+            <div class="ops-viz">
+              {% if s %}
+              <div>
+                {% if s.rated %}<div class="ops-meter"><i class="ops-f-main" style="width: {{ s.width }}%"></i></div>
+                {% else %}<div class="ops-meter adm-unknown"></div>{% endif %}
+                {% if s.rated %}<div class="ops-mkey"><span class="ops-k-light">Free <b>{{ s.free }} T</b></span><span class="ops-k-mute">Rated <b>{{ s.capacity }} T</b></span></div>{% endif %}
+                <div class="ops-mkey">{% for item in s.items %}<span class="ops-k-{{ item.fill }}">{{ item.label }} <b>{{ item.figure }}</b></span>{% endfor %}</div>
+              </div>
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"oil_storage" default="SAP stock could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+        </div>
+      </section>
+
+      {# ═════ COST & ACTION ═════ #}
+      <section class="ops-band adm-band ops-b-transport" data-band="cost">
+        <div class="ops-rail"><p>Cost <em>&amp; action centre</em></p></div>
+        <div class="ops-groups adm-cols-cost">
+
+          {% with c=v.cost %}
+          <div class="ops-grp" data-tile="cost">
+            <div class="ops-grow">
+              <b class="ops-nm">Factory cost</b>
+              {% if c %}<span class="ops-tag ops-t-{{ c.tag.tone }}">{{ c.tag.label }}</span>{% endif %}
+            </div>
+            <div class="ops-sub"></div>
+            <div class="ops-viz ops-tall">
+              {% if c %}
+              <div class="adm-donut-wrap">
+                <div class="adm-donut">
+                  <svg viewBox="0 0 128 128" role="img" aria-label="{{ c.aria }}">
+                    <circle cx="64" cy="64" r="54" class="adm-track" stroke-width="17"></circle>
+                    {% for arc in c.arcs %}<circle class="adm-arc" data-line="{{ arc.key }}" cx="64" cy="64" r="54" stroke="{{ arc.colour }}" stroke-width="17" stroke-dasharray="{{ arc.dash }}" stroke-dashoffset="{{ arc.offset }}"><title>{{ arc.label }}</title></circle>{% endfor %}
+                  </svg>
+                  <div class="adm-hole"><b>{{ c.total }}</b><em>{{ c.window }}</em></div>
+                </div>
+                <div class="adm-legend">
+                  {% for line in c.legend %}
+                  <div class="adm-lrow{% if line.nil %} adm-zero{% endif %}"{% if not line.nil %} data-line="{{ line.key }}"{% endif %} style="--lc: {{ line.colour }}"{% if line.title %} title="{{ line.title }}"{% endif %}>
+                    <i class="adm-sw"></i>
+                    <em>{{ line.label }}</em>
+                    <strong>{{ line.money }}</strong>
+                    <span>{{ line.share }}</span>
+                    {% if line.detail or line.today %}<small class="adm-ldet">{% if line.detail %}<u>{{ line.detail }}</u>{% endif %}{% if line.today %}<b>{{ line.today }}</b>{% endif %}</small>{% endif %}
+                  </div>
+                  {% endfor %}
+                  {% if c.foot %}<div class="ops-mkey adm-foot"><span class="ops-k-mute">{{ c.foot }}</span></div>{% endif %}
+                </div>
+              </div>
+              {% else %}{% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"cost" default="The expense registers could not be read." %}{% endif %}
+            </div>
+          </div>
+          {% endwith %}
+
+          {% with a=v.actions %}
+          <div class="adm-actions" data-tile="actions">
+            <div class="adm-acap">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0-6 6c0 4-2 5-2 5h16s-2-1-2-5a6 6 0 0 0-6-6Z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></svg>
+              Action centre
+              {% if a %}<span class="adm-cnt">{% for count in a.counts %}<i class="adm-c-{{ count.severity }}">{{ count.text }}</i>{% endfor %}</span>{% endif %}
+            </div>
+            {% if a %}
+            <div class="adm-alist">
+              {% if a.degraded %}
+              <div class="adm-alert adm-a-crit">
+                <div class="adm-ic">!</div>
+                <div class="adm-tx"><b>Part of this board could not be read</b><span title="{{ a.degraded }}">{{ a.degraded }}</span></div>
+                <div class="adm-do">Check SAP</div>
+              </div>
+              {% endif %}
+              {% for alert in a.alerts %}
+              <div class="adm-alert {{ alert.css }}" data-alert="{{ alert.key }}">
+                <div class="adm-ic" aria-hidden="true">{{ alert.mark }}</div>
+                <div class="adm-tx"><b><span class="adm-sr">{{ alert.word }}: </span>{{ alert.title }}</b><span title="{{ alert.detail }}">{{ alert.detail }}</span></div>
+                {% if alert.action %}<div class="adm-do">{{ alert.action }}</div>{% endif %}
+              </div>
+              {% endfor %}
+              {% if a.clear %}
+              <div class="adm-alert adm-a-clear">
+                <div class="adm-ic" aria-hidden="true">✓</div>
+                <div class="adm-tx"><b>Nothing needs a decision</b><span>Output is tracking plan, every rated store has room, and each cost line has a source.</span></div>
+              </div>
+              {% endif %}
+              {% if a.hidden %}<p class="ops-note adm-more">{{ a.hidden }}</p>{% endif %}
+            </div>
+            {% else %}
+            {% include "boards/fragments/admin/_unread.html" with reason=reasons|get:"alerts" default="The alert rules could not be run." %}
+            {% endif %}
+          </div>
+          {% endwith %}
+
+        </div>
+      </section>
+    </main>
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>
+{% endwith %}

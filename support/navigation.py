@@ -26,7 +26,7 @@ def build_nav(request):
         {
             "title": "Tickets",
             "items": [
-                _item(request, "Dashboard", "home", "support:home", exact=True),
+                _item(request, "Home", "home", "support:home", exact=True),
                 _item(request, "Raise ticket", "plus", "support:ticket-create"),
                 _item(request, "My tickets", "ticket", "support:my-tickets", exact=True),
                 _item(request, "Notifications", "bell", "support:notifications", badge=unread or None),
@@ -48,6 +48,11 @@ def build_nav(request):
             }
         )
 
+    dashboards = dashboard_items(request)
+
+    if dashboards:
+        sections.append({"title": "Dashboard", "items": dashboards})
+
     if access.is_admin(user):
         sections.append(
             {
@@ -66,6 +71,27 @@ def build_nav(request):
         )
 
     return sections, unread
+
+
+def dashboard_items(request):
+    """The JI dashboards (boards app), for those who may see them."""
+
+    from django.apps import apps
+
+    if not apps.is_installed("boards"):
+        return []
+
+    from boards import registry
+    from boards.access import can_view_dashboards
+
+    if not can_view_dashboards(request.user):
+        return []
+
+    items = [_item(request, "All dashboards", "grid", "boards:index", exact=True)]
+    items += [_item(request, slide.label, slide.icon, "boards:board", args=[slide.key]) for slide in registry.SLIDES]
+    items.append(_item(request, "Wall carousel", "monitor", "boards:carousel"))
+
+    return items
 
 
 def portal_context(request, title="", **extra):

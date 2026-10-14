@@ -12,6 +12,8 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.30.0",
     "gunicorn>=26.2.0",
+    # SAP HANA client, for the factory boards (boards/sources/hana.py).
+    "hdbcli>=2.30",
     "psycopg[binary]>=3.3.6",
     "pyjwt[crypto]>=2.10",
     "python-dotenv>=1.2.3",

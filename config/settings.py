@@ -119,6 +119,9 @@ INSTALLED_APPS = [
     "authentication",
     "audit",
     "support",
+    # The JI dashboards: the factory application's boards, read from its
+    # databases (boards/README.md, docs/board-carousel.md).
+    "boards",
 ]
 
 MIDDLEWARE = [
@@ -658,3 +661,64 @@ have stricter limits, noted on each operation. Throttled requests get `429`.
 }
 
 AUTH_USER_MODEL = "users.User"
+
+
+# Factory boards
+# The JI dashboards (/dashboards/, with the wall carousel) show the factory application's
+# control boards, composed here from the factory's own databases: its
+# PostgreSQL database (read-only, one connection per board build) and,
+# optionally, SAP HANA for the tiles that read SAP. Nothing here is a Django
+# database alias: the factory's tables have no models in this project, and
+# the test runner must never try to create a test database on that server.
+# See docs/board-carousel.md.
+
+
+def env_mapping(name):
+    """``A=1,B=2`` as a dict. Entries without ``=`` are ignored."""
+
+    mapping = {}
+
+    for item in env_list(name):
+        key, separator, value = item.partition("=")
+
+        if separator and key.strip():
+            mapping[key.strip()] = value.strip()
+
+    return mapping
+
+
+FACTORY_DB = {
+    "NAME": os.getenv("FACTORY_DB_NAME", ""),
+    "USER": os.getenv("FACTORY_DB_USER", ""),
+    "PASSWORD": os.getenv("FACTORY_DB_PASSWORD", ""),
+    # In production the factory database runs on this host (127.0.0.1).
+    "HOST": os.getenv("FACTORY_DB_HOST", "127.0.0.1"),
+    "PORT": env_int("FACTORY_DB_PORT", 5432),
+    # Seconds. A wall board must never hang a worker on a database that
+    # isn't answering; a slow query costs one tile, not the board.
+    "CONNECT_TIMEOUT": env_int("FACTORY_DB_CONNECT_TIMEOUT", 5),
+    "STATEMENT_TIMEOUT": env_int("FACTORY_DB_STATEMENT_TIMEOUT", 20),
+}
+
+FACTORY_HANA = {
+    "HOST": os.getenv("FACTORY_HANA_HOST", ""),
+    "PORT": env_int("FACTORY_HANA_PORT", 30015),
+    "USER": os.getenv("FACTORY_HANA_USER", ""),
+    "PASSWORD": os.getenv("FACTORY_HANA_PASSWORD", ""),
+    # Company code -> HANA schema, e.g. JIVO_OIL=<schema>,JIVO_MART=<schema>
+    "SCHEMAS": env_mapping("FACTORY_HANA_SCHEMAS"),
+    # Seconds.
+    "CONNECT_TIMEOUT": env_int("FACTORY_HANA_CONNECT_TIMEOUT", 15),
+    "COMMUNICATION_TIMEOUT": env_int("FACTORY_HANA_COMMUNICATION_TIMEOUT", 60),
+}
+
+# The company whose boards the carousel shows (the factory's company code).
+FACTORY_COMPANY_CODE = os.getenv("FACTORY_COMPANY_CODE", "JIVO_OIL")
+
+# The factory's local time: "today" and "this month" on every board.
+BOARDS_TIME_ZONE = os.getenv("BOARDS_TIME_ZONE", "Asia/Kolkata")
+
+# A composed board is kept this long (in the default cache), so several
+# screens showing the same board don't each query SAP every refresh. 0
+# disables it.
+BOARDS_CACHE_SECONDS = env_int("BOARDS_CACHE_SECONDS", 20)

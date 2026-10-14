@@ -1,0 +1,12 @@
+{% comment %}
+  OpsMeter: one quantity split into its parts, every segment on one scale,
+  a legend for the labelled ones. A segment with any width keeps at least the
+  bar's own height, so a sliver reads as a dot rather than vanishing.
+  Include with meter=<the presenter's meter dict>.
+{% endcomment %}
+<div>
+  <div class="ops-meter">{% for segment in meter.segments %}<i class="ops-f-{{ segment.fill }}" style="width: {{ segment.width }}%;{% if segment.sliver %} min-width: var(--meter-h);{% endif %}{% if segment.delay %} animation-delay: {{ segment.delay }};{% endif %}"></i>{% endfor %}</div>
+  {% if meter.legend %}
+  <div class="ops-mkey">{% for key in meter.legend %}<span class="ops-k-{{ key.fill }}">{{ key.label }}{% if key.figure %}<b>{{ key.figure }}</b>{% endif %}</span>{% endfor %}</div>
+  {% endif %}
+</div>

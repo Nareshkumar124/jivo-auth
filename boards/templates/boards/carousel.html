@@ -1,0 +1,118 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>{{ title }} · Jivo Support</title>
+  <link rel="stylesheet" href="{% static 'boards/ops-board.css' %}">
+  <link rel="stylesheet" href="{% static 'boards/carousel.css' %}">
+  <link rel="stylesheet" href="{% static 'boards/boards.css' %}">
+  {% for href in stylesheets %}
+  <link rel="stylesheet" href="{% static href %}">
+  {% endfor %}
+  {{ config|json_script:"bcx-config" }}
+  <script src="{% static 'boards/carousel.js' %}" defer></script>
+  {% for src in scripts %}
+  <script src="{% static src %}" defer></script>
+  {% endfor %}
+</head>
+<body>
+{% comment %}
+  The shell carries `.ops-board` itself, and so does each board inside it:
+  `--u` is defined identically by both, so the strip and the board are drawn
+  to one scale. `.ops-wall` is always on: this page has no app chrome, so the
+  board's `vh` maths is exact whether or not the browser is fullscreen.
+{% endcomment %}
+<div class="bcx ops-board ops-wall{% if single %} bcx-single{% endif %}{% if embedded %} bcx-embedded{% endif %}" id="bcx"
+     data-fullscreen="no" data-fit="off">
+
+  <div class="bcx-strip" id="bcx-strip" data-visible="yes">
+    {% comment %} First, on the screen's very top edge, outside the fading row: the one
+       mark that says this screen is a rotation at all. {% endcomment %}
+    <div class="bcx-progress" id="bcx-progress" data-paused="no"><i id="bcx-progress-bar" style="width: 0%"></i></div>
+
+    <div class="bcx-row">
+      <div class="bcx-state" id="bcx-state" data-paused="no"><i></i><span id="bcx-state-text">ROTATING</span></div>
+
+      <div class="bcx-dots" id="bcx-dots" role="tablist" aria-label="Boards in this rotation">
+        {% for slide in slides %}
+        <button type="button" role="tab" class="bcx-dot" data-index="{{ forloop.counter0 }}"
+                data-active="{% if forloop.first %}yes{% else %}no{% endif %}"
+                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                title="Show {{ slide.label }}"><span>{{ slide.label }}</span></button>
+        {% endfor %}
+      </div>
+
+      <div class="bcx-count" id="bcx-count"><span id="bcx-count-main">—</span><em id="bcx-count-sub">&nbsp;</em></div>
+
+      <div class="bcx-controls">
+        {# Back into the ticket system's Dashboard section. #}
+        <a class="bcx-btn" id="bcx-home" href="{{ home_url }}" aria-label="Back to the dashboards" title="Back to the dashboards">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>
+        </a>
+        <button type="button" class="bcx-btn" id="bcx-prev" aria-label="Previous board" title="Previous board (←)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>
+        </button>
+        <button type="button" class="bcx-btn" id="bcx-pause" aria-pressed="false" aria-label="Hold this board" title="Hold this board (space)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-when="running"><path d="M9 4v16M15 4v16"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-when="paused" hidden><path d="M7 4v16l13-8z"/></svg>
+        </button>
+        <button type="button" class="bcx-btn" id="bcx-next" aria-label="Next board" title="Next board (→)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+        </button>
+
+        <label class="bcx-dwell" id="bcx-dwell">
+          <span class="bcx-sr">Seconds per board</span>
+          <select id="bcx-dwell-select" title="How long each board holds the screen">
+            {% for seconds in dwell_choices %}
+            <option value="{{ seconds }}">{% if seconds < 60 %}{{ seconds }}s{% else %}{% widthratio seconds 60 1 %} min{% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        {% comment %} Overscan compensation, for a television that crops what it is sent.
+           Here rather than on a settings page: the person who needs it is
+           standing in front of the screen, watching the edge disappear. {% endcomment %}
+        <label class="bcx-dwell">
+          <span class="bcx-sr">Shrink to fit the screen</span>
+          <select id="bcx-fit-select" title="Shrink the board, for a television that crops the picture it is sent">
+            {% for percent in overscan_choices %}
+            <option value="{{ percent }}">{% if percent == 0 %}Fit: full{% else %}Fit: −{{ percent }}%{% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <a class="bcx-btn" id="bcx-open" href="{{ slides.0.pageUrl }}"
+           aria-label="{% if single %}Back to the rotation{% else %}Open this board on its own{% endif %}"
+           title="{% if single %}Back to the rotation{% else %}Open this board on its own{% endif %}">
+          {% if single %}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16"/><path d="m10 6-6 6 6 6"/></svg>
+          {% else %}
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+          {% endif %}
+        </a>
+
+        <button type="button" class="bcx-btn" id="bcx-fullscreen" aria-pressed="false" aria-label="Show fullscreen" title="Show fullscreen (F)">
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-when="windowed"><path d="M3 9V3h6"/><path d="M21 9V3h-6"/><path d="M21 15v6h-6"/><path d="M3 15v6h6"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" data-when="fullscreen" hidden><path d="M9 3v6H3"/><path d="M15 3v6h6"/><path d="M15 21v-6h6"/><path d="M9 21v-6H3"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {% comment %} One slide mounted at a time: a wall screen is cheap hardware, and a board
+     coming back round paints from this page's cache before it refreshes. {% endcomment %}
+  <div class="bcx-stage" id="bcx-stage">
+    {% if slides %}
+    <div class="bcx-loading"><span>Loading {{ slides.0.label }}…</span></div>
+    {% else %}
+    <div class="bcx-empty">
+      <b>No boards to show</b>
+      <p>No board is registered for this rotation.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+</body>
+</html>

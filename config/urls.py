@@ -44,6 +44,10 @@ urlpatterns = [
     # Support tickets: JSON API for applications
     path("api/v1/support/", include("support.api_urls")),
 
+    # The JI dashboards (the factory's boards), in the ticket system's
+    # Dashboard section; boards.view_dashboards decides who sees them
+    path("dashboards/", include("boards.urls")),
+
     # Public keys that verify issued tokens
     path(".well-known/jwks.json",JWKSView.as_view(),name="jwks",),
 

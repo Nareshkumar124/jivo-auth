@@ -1,0 +1,185 @@
+{% comment %}
+  A built board: the factory's CustomBoardView.tsx, CardFace.tsx and
+  CardViz.tsx as one Django template.
+
+  `board` is the service's payload (`board.board` is the board row,
+  `board.cards` the placed cards), `meta` its meta and `slide` the registry
+  entry. Every tile is `.ops-grp`, the same four-row tile the Plant and
+  Logistics boards are built from, wearing its hue through an `ops-b-*`
+  class, so a card here and the same card on the factory's wall draw the
+  same bar the same way.
+
+  THE HEADING IS THE TOPBAR. The factory draws the board's name as a header
+  row above the grid; here that row is the `.ops-topbar` every slide in the
+  rotation carries (live pill, name, clock), so the grid keeps the height the
+  fixed boards' stacks have. `show_heading` decides whether the board's own
+  name and description sit in it; the pill and the clock stay, because a wall
+  that has lost its clock cannot be told from a frozen tab.
+
+  FOUR REASONS A CARD CAN BE BLANK, KEPT APART. A card whose payload is null
+  renders an `.ops-unread` tile with the reason from `meta.reasons`, never a
+  zero. Retired and misplaced cards have no tile to say it on, so they are
+  said once in the meta strip. Nothing is withheld on this wall.
+
+  All geometry (bar widths, column heights, figures) is precomputed by the
+  service in `built_cards/viz.present()`; this template only prints it.
+{% endcomment %}{% load boards %}
+{% with b=board.board %}
+<div class="ops-board cbx-view cbx-s-{{ b.surface|default:'light' }} cbx-d-{{ b.density|default:'normal' }}{% if b.mode == 'WALL' or not b %} cbx-wall{% endif %}"
+     data-surface="{{ b.surface|default:'light' }}" data-density="{{ b.density|default:'normal' }}"
+     data-accent="{{ b.accent|default:'warehouse' }}" data-slug="{{ meta.slug }}">
+  <div class="ops-board__inner">
+    <div class="ops-topbar">
+      <div class="ops-pill-live"><i></i>LIVE</div>
+      {% if b and b.show_heading %}
+      <div class="ops-title cbx-view-head" title="{{ b.name }}{% if b.description %} — {{ b.description }}{% endif %}">
+        <b>{{ b.name }}</b>
+        <span>{% if b.description %}{{ b.description }}{% else %}{{ meta.company }}{% endif %}</span>
+      </div>
+      {% else %}
+      <div class="ops-title"><b>{{ slide.label }}</b><span>{{ meta.company }}</span></div>
+      {% endif %}
+      <div class="ops-chips"></div>
+      <div class="ops-totals"></div>
+      <div class="ops-clock" data-clock>{{ meta.generated_at|clock }}</div>
+    </div>
+
+    {% if b %}
+    <div class="cbx-view-grid"
+         style="grid-template-columns: repeat({{ b.columns }}, minmax(0, 1fr)); grid-template-rows: repeat({{ b.rows }}, {% if b.mode == 'WALL' %}minmax(0, 1fr){% else %}minmax(calc(14 * var(--u)), auto){% endif %});">
+      {% for card in board.cards %}
+      <div class="cbx-cell ops-b-{{ card.accent }}" data-card="{{ card.card_key }}" data-placement="{{ card.id }}"
+           style="grid-column: {{ card.column|add:1 }} / span {{ card.columns }}; grid-row: {{ card.row|add:1 }} / span {{ card.rows }};">
+        {% if card.payload is None %}
+        {# The service did not run this card, or it failed. The reason is in meta, named by the card's key. #}
+        <div class="ops-grp cbx-grp-unread">
+          <div class="ops-grow"><b class="ops-nm">{{ card.title }}</b></div>
+          <div class="ops-sub"></div>
+          <div class="ops-unread cbx-unread"><b>Not read</b>{{ meta.reasons|get:card.card_key|default:"This card could not be read just now. The source did not answer." }}</div>
+        </div>
+        {% else %}
+        {% with p=card.payload v=card.payload.viz %}
+        <div class="ops-grp">
+          <div class="ops-grow">
+            <b class="ops-nm">{{ card.title }}</b>
+            {% if p.tag %}<span class="ops-tag ops-t-{{ p.tag.tone|default:'neut' }}">{{ p.tag.label }}</span>{% endif %}
+          </div>
+          {# Always rendered, even empty, to hold the grid row: dropping it would let one tile's figure ride higher than its neighbours'. #}
+          <div class="ops-sub">{{ p.sub }}</div>
+          <div class="ops-val">
+            {% if p.missing %}<b class="ops-nil">—</b>{% else %}<b>{{ p.value }}</b>{% if p.unit %}<u>{{ p.unit }}</u>{% endif %}{% endif %}
+          </div>
+          <div class="ops-viz">
+            {% if p.missing %}
+            {# A rule where the figure goes and the reason beneath: no source is not a zero. #}
+            <p class="ops-note">{{ p.missing }}</p>
+            {% elif v %}
+              {% if v.kind == "meter" %}
+              <div>
+                <div class="ops-meter">
+                  {% for seg in v.segments %}<i class="ops-f-{{ seg.fill }}" style="width: {{ seg.pct }}%;{% if seg.sliver %} min-width: var(--meter-h);{% endif %}{% if seg.delay %} animation-delay: {{ seg.delay }}s;{% endif %}"></i>{% endfor %}
+                </div>
+                <div class="ops-mkey">
+                  {% for seg in v.segments %}{% if seg.label %}<span class="ops-k-{{ seg.fill }}">{{ seg.label }}<b>{{ seg.figure }}</b></span>{% endif %}{% endfor %}
+                </div>
+              </div>
+
+              {% elif v.kind == "pair" %}
+              <div>
+                <div class="ops-pair">
+                  {% for row in v.rows %}
+                  <div class="ops-prow">
+                    <em title="{{ row.label }}">{{ row.label }}</em>
+                    <div class="b"><i class="ops-f-{{ row.fill }}" style="width: {{ row.pct }}%;"></i></div>
+                    <strong>{{ row.figure }}</strong>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% if v.note %}<div class="ops-mkey"><span class="ops-k-mute">{{ v.note }}</span></div>{% endif %}
+              </div>
+
+              {% elif v.kind == "bars" %}
+              <div>
+                <div class="ops-bars">
+                  {% for day in v.days %}
+                  <div{% if day.current %} class="ops-now"{% endif %}>
+                    {% if day.figure %}<em class="ops-bval">{{ day.figure }}</em>{% endif %}
+                    <i style="height: {{ day.height }}%; animation-delay: {{ day.delay }}s;"></i>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="ops-blab">
+                  {% for day in v.days %}<span{% if day.current %} class="ops-now"{% endif %}>{{ day.label }}</span>{% endfor %}
+                </div>
+              </div>
+
+              {% elif v.kind == "split" %}
+              <div class="cbx-split">
+                {% for part in v.parts %}
+                <div><b>{{ part.value }}</b><em>{{ part.label }}</em></div>
+                {% endfor %}
+              </div>
+
+              {% elif v.kind == "table" %}
+              <div class="cbx-table-wrap">
+                <table class="cbx-table">
+                  <thead>
+                    <tr>{% for col in v.header %}<th style="text-align: {{ col.align }};">{{ col.label }}</th>{% endfor %}</tr>
+                  </thead>
+                  <tbody>
+                    {% for row in v.body %}
+                    <tr>{% for cell in row %}<td title="{{ cell.text }}" style="text-align: {{ cell.align }};">{{ cell.text }}</td>{% endfor %}</tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              {% elif v.kind == "matrix" %}
+              <div class="cbx-table-wrap">
+                <table class="cbx-table cbx-matrix">
+                  <thead>
+                    <tr><th></th>{% for col in v.columns %}<th style="text-align: right;">{{ col }}</th>{% endfor %}</tr>
+                  </thead>
+                  <tbody>
+                    {% for row in v.rows %}
+                    <tr>
+                      <th scope="row">{{ row.label }}</th>
+                      {# A null cell is a rule, not a zero. The boards' one hard rule, applied one cell at a time. #}
+                      {% for cell in row.cells %}<td style="text-align: right;">{% if cell is None %}<span class="cbx-nil">—</span>{% else %}{{ cell }}{% endif %}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+                {% if v.caption %}<p class="cbx-caption">{{ v.caption }}</p>{% endif %}
+              </div>
+              {% endif %}
+              {# The card's own caption, under its visualisation. Only where the card supplied one. #}
+              {% if p.note %}<p class="cbx-note">{{ p.note }}</p>{% endif %}
+            {% endif %}
+          </div>
+        </div>
+        {% endwith %}
+        {% endif %}
+      </div>
+      {% endfor %}
+      {% if not board.cards %}
+      <p class="cbx-canvas-empty">There is nothing on this board yet.</p>
+      {% endif %}
+    </div>
+
+    {% else %}
+    {# No board row: the read failed (reason in meta.reasons.board) or no published board carries this slug (the warning says so). Never a 404 here: the rotation listed it a minute ago. #}
+    <div class="ops-unread cbx-unread cbx-no-board">
+      {% with reason=meta.reasons|get:"board" %}
+      {% if reason %}
+      <b>{{ slide.label }} could not be read</b>{{ reason }}
+      {% else %}
+      <b>No published board is slugged “{{ meta.slug }}”</b>It may have been unpublished, taken off the rotation, or belong to another company.
+      {% endif %}
+      {% endwith %}
+    </div>
+    {% endif %}
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>
+{% endwith %}

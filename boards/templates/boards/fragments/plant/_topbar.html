@@ -1,0 +1,30 @@
+{% comment %}
+  OpsTopbar: state, identity, context, the workforce totals and the time.
+  Both title lines truncate rather than wrap (the header's row is auto, so a
+  line it gains is a line the bands lose); the full text stays in the title
+  attribute. The clock's time is kept ticking by the page (data-clock). No
+  settings or fullscreen control: inside the carousel the factory hides both.
+{% endcomment %}
+<header class="ops-topbar">
+  <div class="ops-pill-live" data-state="live"><i></i>LIVE</div>
+  <div class="ops-title">
+    <b title="{{ top.title }}">{{ top.title }}</b>
+    <span title="{{ top.scope }}">{{ top.scope }}</span>
+  </div>
+  <div class="ops-chips">
+    {% for chip in top.chips %}<div class="ops-chip" title="{{ chip.label }} {{ chip.value }}"><em>{{ chip.label }}</em> {{ chip.value }}</div>{% endfor %}
+  </div>
+  <div class="ops-totals">
+    {% for total in top.totals %}
+    <div class="ops-tot">
+      <div class="cap">{{ total.caption }}</div>
+      <div class="{% if total.missing %}n ops-nil{% else %}n{% endif %}">{% if total.missing %}—{% else %}{{ total.value }}{% endif %}</div>
+      <div class="s">{{ total.sub }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="ops-clock">
+    <div class="t" data-clock>{{ top.time }}</div>
+    <div class="d">{{ top.date }}</div>
+  </div>
+</header>

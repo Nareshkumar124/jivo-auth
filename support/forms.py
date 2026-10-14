@@ -695,6 +695,7 @@ class PeopleFilterForm(forms.Form):
         ("admins", "Administrators"),
         ("managers", "Team managers"),
         ("members", "Team members"),
+        ("dashboards", "Can see the JI dashboards"),
         ("users", "Users only"),
     ]
 
@@ -722,10 +723,25 @@ class PeopleFilterForm(forms.Form):
             queryset = queryset.filter(team_memberships__role=TeamMembership.Role.MANAGER).distinct()
         elif role == "members":
             queryset = queryset.filter(team_memberships__isnull=False).distinct()
+        elif role == "dashboards":
+            queryset = queryset.filter(dashboard_access_q()).distinct()
         elif role == "users":
             queryset = queryset.filter(team_memberships__isnull=True).exclude(admins)
 
         return queryset
+
+
+def dashboard_access_q():
+    """Who sees the JI dashboards: the permission directly, through a staff
+    role, or as a superuser (boards.access)."""
+
+    codename = {"permissions__content_type__app_label": "boards", "permissions__codename": "view_dashboards"}
+
+    return (
+        Q(is_superuser=True)
+        | Q(user_permissions__content_type__app_label="boards", user_permissions__codename="view_dashboards")
+        | Q(**{f"groups__{key}": value for key, value in codename.items()})
+    )
 
 
 class SettingsForm(forms.ModelForm):

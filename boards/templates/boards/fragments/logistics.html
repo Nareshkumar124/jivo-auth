@@ -1,0 +1,68 @@
+{% comment %}
+  The Logistics Control board: the factory's LogisticsControlDashboardPage
+  ("Operations board"), drawn for the wall from the service's composed
+  payload. Three bands in the order the plant works -- warehouse (teal),
+  dispatch (blue), transportation (violet) -- each closing with who is on
+  shift.
+
+  Every class here is the factory's own, from ops-board.css copied
+  verbatim; logistics.css only adds what that sheet never had to draw (a
+  tile whose feed could not be read). The service has already formatted
+  every figure and precomputed every bar, so this template only lays out.
+
+  The board's one hard rule: a figure with no source does not look like a
+  figure. A feed that is None in the payload draws its tile with a rule
+  where the number goes and the reason under it (.ops-unread), never a zero.
+{% endcomment %}
+{% load boards %}
+{% with topbar=board.topbar %}
+<div class="ops-board lc-board" data-board="logistics">
+  <div class="ops-board__inner">
+    <header class="ops-topbar">
+      <div class="ops-pill-live" data-state="live"><i></i>LIVE</div>
+
+      {# One line of title over one line of scope, always: both truncate. #}
+      <div class="ops-title">
+        <b title="{% firstof topbar.title slide.title %}">{% firstof topbar.title slide.title %}</b>
+        <span title="{% firstof topbar.scope meta.company %}">{% firstof topbar.scope meta.company %}</span>
+      </div>
+
+      <div class="ops-chips">
+        {% for chip in topbar.chips %}
+        <div class="ops-chip" title="{{ chip.label }} {{ chip.value }}"><em>{{ chip.label }}</em> {{ chip.value }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="ops-totals">
+        {% for total in topbar.totals %}
+        <div class="ops-tot">
+          <div class="cap">{{ total.caption }}</div>
+          <div class="n{% if total.missing %} ops-nil{% endif %}">{% if total.missing %}—{% else %}{{ total.value }}{% endif %}</div>
+          <div class="s">{{ total.sub }}</div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# The carousel keeps [data-clock] ticking; it rewrites only the time. #}
+      <div class="ops-clock">
+        <div class="t" data-clock>{{ meta.generated_at|clock }}</div>
+        <div class="d">{{ meta.clock_date }}</div>
+      </div>
+    </header>
+
+    {% if board.bands %}
+    <main class="ops-stack">
+      {% for band in board.bands %}
+      {% include "boards/fragments/logistics/band.html" %}
+      {% endfor %}
+    </main>
+    {% else %}
+    <div class="ops-unread">
+      <b>{{ slide.label }} could not be composed</b>
+      {{ meta.reasons.board|default:"The board's feeds did not answer." }}
+    </div>
+    {% endif %}
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>
+{% endwith %}

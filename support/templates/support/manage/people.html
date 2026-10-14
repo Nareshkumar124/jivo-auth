@@ -3,21 +3,35 @@
 
 {% block page_head %}
   <div class="page-head">
-    <div><h1>People and roles</h1><p class="page-head__sub">{{ counts.admins }} administrator{{ counts.admins|pluralize }} · {{ counts.managers }} team manager{{ counts.managers|pluralize }} · {{ counts.members }} team member{{ counts.members|pluralize }}. Everyone else can raise and follow their own tickets. Accounts themselves are created in the auth admin panel.</p></div>
+    <div><h1>People and roles</h1><p class="page-head__sub">{{ counts.admins }} administrator{{ counts.admins|pluralize }} · {{ counts.managers }} team manager{{ counts.managers|pluralize }} · {{ counts.members }} team member{{ counts.members|pluralize }}{% if dashboards %} · {{ counts.dashboards }} can see the JI dashboards{% endif %}. Everyone else can raise and follow their own tickets. Accounts themselves are created in the auth admin panel.</p></div>
   </div>
 {% endblock %}
 
 {% block content %}
+<div class="grid">
 <section class="card form" aria-labelledby="grant-title">
-  <header class="card__head"><div><h2 class="card__title" id="grant-title">Make someone a ticket administrator</h2><p class="card__sub">Administrators see and manage every ticket and everything under Administration. Superusers always are one. Team roles are given on each team's page.</p></div></header>
+  <header class="card__head"><div><h2 class="card__title" id="grant-title">{% icon "shield" 16 %}Make someone a ticket administrator</h2><p class="card__sub">Administrators see and manage every ticket and everything under Administration. Superusers always are one. Team roles are given on each team's page.</p></div></header>
   <form method="post" action="{% url 'support:manage-administrators' %}" class="member-row">
     {% csrf_token %}
-    <label class="visually-hidden" for="{{ grant_form.person.id_for_label }}">Email</label>
-    {{ grant_form.person }}
-    <button type="submit" class="button button--primary">{% icon "shield" 15 %}Make administrator</button>
+    <label class="visually-hidden" for="admin-email">Email</label>
+    <input type="email" name="person" id="admin-email" placeholder="name@jivo.in" autocomplete="off" list="people-suggestions" required>
+    <button type="submit" class="button button--primary">Make administrator</button>
   </form>
-  <datalist id="people-suggestions">{% for person in page.object_list %}<option value="{{ person.email }}"></option>{% endfor %}</datalist>
 </section>
+
+{% if dashboards %}
+<section class="card form" aria-labelledby="dash-title">
+  <header class="card__head"><div><h2 class="card__title" id="dash-title">{% icon "chart" 16 %}Give dashboard access</h2><p class="card__sub">They get the Dashboard section with every JI dashboard and the wall carousel. The same permission can be given in /admin/: User permissions, or the "Dashboard viewer" staff role.</p></div></header>
+  <form method="post" action="{% url 'support:manage-dashboard-access' %}" class="member-row">
+    {% csrf_token %}
+    <label class="visually-hidden" for="dash-email">Email</label>
+    <input type="email" name="person" id="dash-email" placeholder="name@jivo.in" autocomplete="off" list="people-suggestions" required>
+    <button type="submit" class="button button--primary">Give access</button>
+  </form>
+</section>
+{% endif %}
+</div>
+<datalist id="people-suggestions">{% for person in page.object_list %}<option value="{{ person.email }}"></option>{% endfor %}</datalist>
 
 <section class="card card--flush">
   <form method="get" class="filters" role="search">
@@ -28,7 +42,7 @@
   </form>
   {% if page.object_list %}
     <div class="table-wrap"><table class="table">
-      <thead><tr><th scope="col">Person</th><th scope="col">Ticket role</th><th scope="col">Teams</th><th scope="col" class="num">Raised</th><th scope="col" class="num">Handling</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+      <thead><tr><th scope="col">Person</th><th scope="col">Ticket role</th><th scope="col">Teams</th>{% if dashboards %}<th scope="col">JI dashboards</th>{% endif %}<th scope="col" class="num">Raised</th><th scope="col" class="num">Handling</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
       <tbody>
         {% for person in page.object_list %}
           <tr{% if person.pk == user.pk %} class="is-me"{% endif %}>
@@ -40,15 +54,36 @@
               {% else %}<span class="muted">User</span>{% endif %}
             </td>
             <td><span class="chips">{% for membership in person.team_memberships.all %}<a class="badge badge--{% if membership.role == 'manager' %}info{% else %}neutral{% endif %}" href="{% url 'support:manage-team' membership.team_id %}">{{ membership.team.name }}{% if membership.role == "manager" %} · manager{% endif %}</a>{% empty %}<span class="muted">—</span>{% endfor %}</span></td>
+            {% if dashboards %}
+              <td>
+                {% if person.dashboard_access == "direct" %}{% badge "Can see" "good" %}
+                {% elif person.dashboard_access == "role" %}<span class="badge badge--good" title="Through the Dashboard viewer staff role in /admin/">Can see (staff role)</span>
+                {% elif person.dashboard_access == "superuser" %}<span class="badge badge--good" title="Superusers always see the dashboards">Can see (superuser)</span>
+                {% else %}<span class="muted">—</span>{% endif %}
+              </td>
+            {% endif %}
             <td class="num">{{ person.raised }}</td>
             <td class="num">{% if person.handling %}<a href="{% url 'support:manage-tickets' %}?assignee={{ person.pk }}&status=active">{{ person.handling }}</a>{% else %}0{% endif %}</td>
             <td>
+              <span class="chips">
+              {% if dashboards and person.dashboard_access == "direct" %}
+                <form method="post" action="{% url 'support:manage-dashboard-access' %}" class="inline-form">{% csrf_token %}
+                  <input type="hidden" name="revoke" value="{{ person.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="button button--ghost button--small" data-confirm="Take the JI dashboards away from {{ person|person }}?">Remove dashboards</button>
+                </form>
+              {% elif dashboards and not person.dashboard_access %}
+                <form method="post" action="{% url 'support:manage-dashboard-access' %}" class="inline-form">{% csrf_token %}
+                  <input type="hidden" name="person" value="{{ person.email }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+                  <button type="submit" class="button button--ghost button--small">Give dashboards</button>
+                </form>
+              {% endif %}
               {% if person.is_ticket_admin and not person.is_superuser and person.pk != user.pk %}
                 <form method="post" action="{% url 'support:manage-administrators' %}" class="inline-form">{% csrf_token %}
                   <input type="hidden" name="revoke" value="{{ person.pk }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
                   <button type="submit" class="button button--ghost button--small" data-confirm="Remove {{ person|person }}'s administrator role?">Remove administrator</button>
                 </form>
               {% endif %}
+              </span>
             </td>
           </tr>
         {% endfor %}

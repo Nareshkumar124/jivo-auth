@@ -12,6 +12,7 @@ all other Jivo applications trust.
 | Move an application that already has its own users onto Jivo Auth | [Moving an existing application](integrate-django.md#moving-an-existing-application-onto-jivo-auth), or the Claude Code skill [`integrate-jivo-auth`](../skills/integrate-jivo-auth/SKILL.md) |
 | Raise or handle a support ticket, or set up departments and teams | [Support tickets](support-tickets.md) (the ticket system is at https://auth.jivo.in/) |
 | Run or configure auth.jivo.in itself | [Running auth.jivo.in](deploy-auth-service.md) |
+| See the JI Factory app's dashboards, or put them on a wall screen | [The JI dashboards](board-carousel.md) (the Dashboard section at https://auth.jivo.in/dashboards/) |
 | Look up an endpoint | [API reference (Swagger)](https://auth.jivo.in/api/docs/) |
 
 ## How it works

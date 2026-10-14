@@ -1,0 +1,17 @@
+{% load boards %}
+<div class="ops-board">
+  <div class="ops-board__inner">
+    <div class="ops-topbar">
+      <div class="ops-pill-live"><i></i>LIVE</div>
+      <div class="ops-title"><b>{{ slide.title }}</b><span>{{ meta.company }}</span></div>
+      <div class="ops-chips"></div>
+      <div class="ops-totals"></div>
+      <div class="ops-clock" data-clock>{{ meta.generated_at|clock }}</div>
+    </div>
+    <div class="ops-unread">
+      <b>{{ slide.label }} is not available yet</b>
+      {{ meta.reasons.board|default:"This board has not been ported." }}
+    </div>
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>

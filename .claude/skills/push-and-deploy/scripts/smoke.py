@@ -52,6 +52,8 @@ TICKET_PAGES = [
     "/manage/reports/",
     "/manage/activity/",
     "/manage/settings/",
+    "/dashboards/",
+    "/dashboards/accounts/",
 ]
 
 results = []

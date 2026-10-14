@@ -322,8 +322,24 @@
         refresh();
     }
 
+    // <button data-fullscreen-target="#id"> shows that element full screen
+    // (the dashboard frame: the board inside then fills the screen).
+    function initFullscreen() {
+        document.querySelectorAll("[data-fullscreen-target]").forEach((button) => {
+            const target = document.querySelector(button.dataset.fullscreenTarget);
+
+            if (!target || !target.requestFullscreen) {
+                button.hidden = true;
+                return;
+            }
+
+            button.addEventListener("click", () => target.requestFullscreen().catch(() => {}));
+        });
+    }
+
     ready(() => {
         initTheme();
+        initFullscreen();
         initDrawer();
         initMessages();
         initConfirmations();

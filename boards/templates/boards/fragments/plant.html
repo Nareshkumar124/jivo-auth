@@ -1,0 +1,27 @@
+{% comment %}
+  The plant control board: the factory's PlantBoardDashboardPage, drawn for
+  the wall.
+
+  Four bands, top to bottom, in the order material moves: what we bought,
+  what the stores hold, what the lines made, what left the floor. Each band
+  is a coloured rail, its tiles and the people strip; each tile is the four
+  fixed rows of the factory's OpsGroup (name and pill, subtitle, figure,
+  visualisation), so a row of tiles shares one baseline.
+
+  Nothing is computed here. boards_plant.plant_view hands over the page
+  already laid out (boards/services/plant_view.py, the port of the page's own
+  arithmetic); the partials under plant/ are the shared components it drew
+  with. A tile whose section is None keeps its place as an .ops-unread tile
+  with the reason, never a zero.
+{% endcomment %}
+{% load boards_plant %}
+{% plant_view board meta as page %}
+<div class="plant-board ops-board">
+  <div class="ops-board__inner">
+    {% include "boards/fragments/plant/_topbar.html" with top=page.topbar %}
+    <main class="ops-stack">
+      {% for band in page.bands %}{% include "boards/fragments/plant/_band.html" %}{% endfor %}
+    </main>
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>

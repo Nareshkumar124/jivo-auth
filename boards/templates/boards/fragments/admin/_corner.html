@@ -1,0 +1,6 @@
+{% comment %}
+  The tile's second figure, over its name row: "today" beside "this month",
+  "space used" beside a tonnage. The note under it is what the figure is
+  measured against. Include with corner=<the presenter's corner dict>.
+{% endcomment %}
+<div class="adm-corner"><em>{{ corner.label }}</em><b>{{ corner.value }}{% if corner.unit %}<u>{{ corner.unit }}</u>{% endif %}</b>{% if corner.note %}<s>{{ corner.note }}</s>{% endif %}</div>

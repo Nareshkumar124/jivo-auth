@@ -1,0 +1,48 @@
+{% comment %}
+  OpsGroup: one tile. Four fixed rows -- name and tag, subtitle, figure,
+  visualisation -- so a row of tiles reads as a row: every name on one line,
+  every figure on one baseline. The subtitle row is drawn even when empty
+  for exactly that reason. A tall tile (a table, a bar pair) lets its
+  visualisation take the figure's row too.
+
+  Three states, never confused with each other:
+  * unread -- the feed behind the tile is None in the payload. A rule where
+    the figure goes, "not read" in the pill, and the reason underneath.
+  * missing -- the feed answered but there is no figure to state (no
+    route, no weighable rows, no bilty with freight). A rule, and the
+    service's sentence saying why.
+  * a figure, with its visualisation and any notes the service attached.
+{% endcomment %}
+{% load boards %}
+{% if tile.section and tile.section in meta.degraded %}
+<div class="ops-grp lc-unread" data-tile="{{ tile.key }}">
+  <div class="ops-grow">
+    <b class="ops-nm">{{ tile.name }}</b>
+    <span class="ops-tag ops-t-nil">not read</span>
+  </div>
+  <div class="ops-sub"></div>
+  {% if not tile.tall %}<div class="ops-val"><b class="ops-nil">—</b></div>{% endif %}
+  <div class="ops-viz{% if tile.tall %} ops-tall{% endif %}">
+    <div class="ops-unread" title="{{ meta.reasons|get:tile.section|default:'This feed could not be read.' }}">{{ meta.reasons|get:tile.section|default:"This feed could not be read." }}</div>
+  </div>
+</div>
+{% else %}
+<div class="ops-grp" data-tile="{{ tile.key }}">
+  <div class="ops-grow">
+    <b class="ops-nm">{{ tile.name }}</b>
+    {% if tile.tag %}<span class="ops-tag ops-t-{% if tile.missing %}nil{% else %}{{ tile.tag.tone|default:'neut' }}{% endif %}">{{ tile.tag.label }}</span>{% endif %}
+  </div>
+  <div class="ops-sub">{{ tile.sub|default:"" }}</div>
+  {% if not tile.tall %}
+  <div class="ops-val">{% if tile.missing or tile.value is None %}<b class="ops-nil">—</b>{% else %}<b>{{ tile.value }}</b>{% if tile.unit %}<u>{{ tile.unit }}</u>{% endif %}{% endif %}</div>
+  {% endif %}
+  <div class="ops-viz{% if tile.tall %} ops-tall{% endif %}">
+    {% if tile.missing %}
+    <p class="ops-note">{{ tile.missing }}</p>
+    {% else %}
+    {% if tile.viz %}{% include "boards/fragments/logistics/viz.html" with viz=tile.viz %}{% endif %}
+    {% for note in tile.notes %}<p class="ops-note">{{ note }}</p>{% endfor %}
+    {% endif %}
+  </div>
+</div>
+{% endif %}

@@ -487,9 +487,42 @@ class MemberUpdateView(AdminRequiredMixin, View):
 
 # ---- People and roles -----------------------------------------------------------
 
+def dashboards_installed():
+    from django.apps import apps
+
+    return apps.is_installed("boards")
+
+
+def dashboard_access(people):
+    """{user id: how they see the JI dashboards} for a page of people:
+    "superuser", "direct" (given here or in /admin/) or "role" (a staff role)."""
+
+    if not dashboards_installed():
+        return {}
+
+    ids = [person.pk for person in people]
+    User = get_user_model()
+    direct = set(User.objects.filter(pk__in=ids, user_permissions__content_type__app_label="boards", user_permissions__codename="view_dashboards").values_list("pk", flat=True))
+    by_role = set(User.objects.filter(pk__in=ids, groups__permissions__content_type__app_label="boards", groups__permissions__codename="view_dashboards").values_list("pk", flat=True))
+
+    access = {}
+
+    for person in people:
+        if person.pk in direct:
+            access[person.pk] = "direct"
+        elif person.pk in by_role:
+            access[person.pk] = "role"
+        elif person.is_superuser:
+            access[person.pk] = "superuser"
+
+    return access
+
+
 class PeopleView(AdminRequiredMixin, View):
 
     def get(self, request):
+        from .forms import dashboard_access_q
+
         form = PeopleFilterForm(request.GET)
         people = form.apply(get_user_model().objects.filter(is_active=True))
         people = (
@@ -503,19 +536,76 @@ class PeopleView(AdminRequiredMixin, View):
             .order_by("first_name", "last_name", "email")
         )
 
+        page = self.paginate(people, 30)
+        access = dashboard_access(page.object_list)
+
+        for person in page.object_list:
+            person.dashboard_access = access.get(person.pk, "")
+
         return self.render(
             "support/manage/people.html",
             title="People and roles",
             form=form,
-            page=self.paginate(people, 30),
+            page=page,
             is_filtered=bool(request.GET.get("q") or request.GET.get("role")),
             grant_form=AdministratorGrantForm(),
+            dashboards=dashboards_installed(),
             counts={
                 "admins": SupportAdministrator.objects.filter(user__is_active=True).count() + get_user_model().objects.filter(is_superuser=True, is_active=True).count(),
                 "managers": TeamMembership.objects.filter(role=TeamMembership.Role.MANAGER).values("user").distinct().count(),
                 "members": TeamMembership.objects.values("user").distinct().count(),
+                "dashboards": get_user_model().objects.filter(is_active=True).filter(dashboard_access_q()).distinct().count() if dashboards_installed() else 0,
             },
         )
+
+
+class DashboardAccessView(AdminRequiredMixin, View):
+    """POST: give someone the JI dashboards (by email) or take them away (by id).
+
+    The same permission, boards.view_dashboards, can also be given in
+    /admin/ (User permissions, or the "Dashboard viewer" staff role).
+    """
+
+    http_method_names = ["post"]
+
+    def post(self, request):
+        if not dashboards_installed():
+            raise PermissionDenied
+
+        from boards import access as dashboard_rules
+
+        if request.POST.get("revoke"):
+            person = get_object_or_404(get_user_model(), pk=request.POST["revoke"])
+            name = person.get_full_name() or person.email
+            still = dashboard_rules.revoke(person)
+
+            if still:
+                messages.warning(
+                    request,
+                    f"Removed the access given here, but {name} still sees the dashboards "
+                    + ("as a superuser." if person.is_superuser else "through a staff role in /admin/ (Dashboard viewer)."),
+                )
+            else:
+                messages.success(request, f"{name} can no longer see the JI dashboards.")
+        else:
+            form = AdministratorGrantForm(request.POST)
+
+            if not form.is_valid():
+                self.form_errors(form)
+                return redirect("support:manage-people")
+
+            person = form.cleaned_data["person"]
+            name = person.get_full_name() or person.email
+
+            if dashboard_rules.can_view_dashboards(person):
+                messages.info(request, f"{name} can already see the JI dashboards.")
+            else:
+                dashboard_rules.grant(person)
+                messages.success(request, f"{name} can now see the JI dashboards.")
+
+        next_url = request.POST.get("next") or ""
+
+        return redirect(next_url if next_url.startswith("/") else reverse("support:manage-people"))
 
 
 class AdministratorView(AdminRequiredMixin, View):

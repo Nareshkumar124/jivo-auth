@@ -1,0 +1,19 @@
+{% comment %}
+  OpsPeople: who is on the band, as typed on the factory's settings page.
+  A figure nobody typed is a rule, never a zero; the split bar is drawn only
+  when both headcounts are known.
+{% endcomment %}
+<div class="ops-people">
+  <div class="ops-pcap">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3.2 2.7-4.8 6-4.8s6 1.6 6 4.8"/><path d="M16.5 11.5a2.6 2.6 0 1 0 0-5.2"/><path d="M17 14.4c2.4.4 4 1.9 4 4.6"/></svg>
+    On shift
+    <b>{% if people.on_shift is None %}<span class="ops-nil">—</span>{% else %}{{ people.on_shift }}{% endif %}</b>
+  </div>
+  {% for role in people.roles %}
+  <div class="ops-prole" style="--pk: {{ role.dot }}">
+    <div class="r"><span class="k">{{ role.label }}</span><span class="n">{% if role.count is None %}<span class="ops-nil">—</span>{% else %}{{ role.count }}{% endif %}</span></div>
+    <div class="s">{{ role.cost }}</div>
+  </div>
+  {% endfor %}
+  {% if people.split %}<div class="ops-psplit"><i class="ops-f-main" style="width: {{ people.split.employees }}%"></i><i class="ops-f-light" style="width: {{ people.split.labour }}%"></i></div>{% endif %}
+</div>

@@ -1,0 +1,270 @@
+{% comment %}
+  The accounts board: the factory's AccountsDashboardPage, drawn for the wall.
+
+  Three of the four stat cards are FLOWS and follow the month; the fourth,
+  cash in hand, is a BALANCE and ignores it. They sit in one column, so the
+  only thing stopping somebody subtracting one from another is that each
+  card says which kind of number it is: "in September" against "closing
+  balance, all time". Those sub-labels are not decoration.
+
+  A negative balance is never hidden; a bucket with no source is "not kept
+  in the cash book", never 0.00; a section that is None is an unread tile,
+  never a zero. Every name was masked by the service before it got here.
+{% endcomment %}
+{% load boards %}
+{% with headline=board.headline imprest=board.imprest cash_issued=board.cash_issued pending=board.pending_ho detail=board.detail salary=board.salary %}
+<div class="ops-board ab-board">
+  <div class="ops-board__inner">
+    <div class="ops-topbar">
+      <div class="ops-pill-live"><i></i>LIVE</div>
+      <div class="ops-title">
+        <b>{{ slide.title|default:"Accounts board" }}</b>
+        <span>Imprest, cash and advances · {{ meta.company_name|default:meta.company }}</span>
+      </div>
+      <div class="ops-chips">
+        <span class="ops-chip" title="The movement tiles follow this month; the balances do not."><em>Period</em> {% if meta.period %}{{ meta.period.label }}{% else %}Whole book{% endif %}</span>
+        <span class="ops-chip" title="Names are hidden on this screen. The figures are complete."><em>Names</em> hidden</span>
+      </div>
+      <div class="ops-totals">
+        {% if headline %}
+        <div class="ops-tot {% if headline.reconciliation.balances %}ab-tot--ok{% else %}ab-tot--bad{% endif %}">
+          <div class="cap">Book check</div>
+          <div class="n">{% if headline.reconciliation.balances %}Balances{% else %}Out by {% if headline.reconciliation.difference < 0 %}−{% endif %}{{ headline.reconciliation.difference|money_full|cut:"-" }}{% endif %}</div>
+          <div class="s">in − out − advances + owed = in hand</div>
+        </div>
+        {% endif %}
+      </div>
+      <div class="ops-clock" data-clock>{{ meta.generated_at|clock }}</div>
+    </div>
+
+    <div class="ab">
+      {# ── left rail: the four figures, then the breakdown ─────────── #}
+      <div class="ab-rail">
+        {% if headline %}
+        <div class="ab-stat">
+          <div class="ab-stat__top"><span class="ab-stat__label">Imprest issued</span><span class="ab-stat__hint">{{ headline.imprest_count }} top-ups</span></div>
+          <p class="ab-stat__value">{{ headline.imprest_issued|money_full }}</p>
+          <p class="ab-stat__period">{% if meta.period %}in {{ meta.period.label }}{% else %}whole book{% endif %}</p>
+          <p class="ab-stat__note">{% if imprest %}{{ imprest.card_balance|money_full }} on the card{% else %}card balance not read{% endif %}</p>
+        </div>
+        <div class="ab-stat">
+          <div class="ab-stat__top"><span class="ab-stat__label">Cash issued</span><span class="ab-stat__hint">{{ headline.cash_issued_count }} withdrawals</span></div>
+          <p class="ab-stat__value">{{ headline.cash_issued|money_full }}</p>
+          <p class="ab-stat__period">{% if meta.period %}in {{ meta.period.label }}{% else %}whole book{% endif %}</p>
+          <p class="ab-stat__note">{{ headline.paid_out|money_full }} spent out of the box</p>
+        </div>
+        <div class="ab-stat">
+          <div class="ab-stat__top"><span class="ab-stat__label">Cash pending from HO</span><span class="ab-stat__hint">{% if headline.pending_ho_count > 0 %}{{ headline.pending_ho_count }} voucher{{ headline.pending_ho_count|pluralize }}{% else %}Nothing waiting{% endif %}</span></div>
+          <p class="ab-stat__value">{{ headline.pending_ho|money_full }}</p>
+          <p class="ab-stat__period">waiting now, any month</p>
+          <p class="ab-stat__note">{% if pending %}{{ pending.sent_bunches }} bunch{{ pending.sent_bunches|pluralize:"es" }} already sent{% else %}Not yet sent{% endif %}</p>
+        </div>
+        <div class="ab-stat {% if headline.in_hand_negative %}ab-stat--alert{% else %}ab-stat--filled{% endif %}">
+          <div class="ab-stat__top"><span class="ab-stat__label">Cash in hand</span><span class="ab-stat__hint">Closing balance</span></div>
+          <p class="ab-stat__value">{% if headline.in_hand_negative %}−{% endif %}{{ headline.cash_in_hand|money_full|cut:"-" }}</p>
+          <p class="ab-stat__period">closing balance, all time</p>
+          <p class="ab-stat__note">{% if headline.in_hand_negative %}Below zero — more has left the box than arrived. Usually a receipt not yet typed.{% else %}As of now, not the period{% endif %}</p>
+        </div>
+        {% else %}
+        <div class="ab-stat ab-stat--unread"><div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"headline"|default:"The cash summary could not be read." }}</div></div>
+        <div class="ab-stat ab-stat--unread"><div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"headline"|default:"The cash summary could not be read." }}</div></div>
+        <div class="ab-stat ab-stat--unread"><div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"headline"|default:"The cash summary could not be read." }}</div></div>
+        <div class="ab-stat ab-stat--unread"><div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"headline"|default:"The cash summary could not be read." }}</div></div>
+        {% endif %}
+
+        <section class="ab-panel">
+          <div class="ab-panel__head"><h3>Outstanding breakdown</h3>{% if detail %}<span class="ab-panel__total"><span class="ab-panel__total-label">Spent</span> {{ detail.total|money_full }} · {{ detail.debits }} debit{{ detail.debits|pluralize }}</span>{% endif %}</div>
+          <div class="ab-panel__body">
+            {% if detail %}
+            {% for bucket in detail.buckets %}
+            <div class="ab-bucket" data-bucket="{{ bucket.key }}">
+              <span class="ab-bucket__top">
+                <span class="ab-bucket__label">{{ bucket.label }}</span>
+                <span class="ab-bucket__amount">{% if bucket.has_source %}{{ bucket.amount|money_full }}{% else %}—{% endif %}</span>
+              </span>
+              {% if bucket.has_source %}
+              <span class="ab-bucket__track"><i class="ab-bucket__fill" data-bucket="{{ bucket.key }}" style="width: {{ bucket.amount|share:detail.total }}%"></i></span>
+              {% else %}
+              <span class="ab-bucket__nosource">Not kept in the cash book</span>
+              {% endif %}
+            </div>
+            {% endfor %}
+            {% if detail.other.count > 0 %}
+            <p class="ab-other">Other heads {{ detail.other.amount|money_full }} over {{ detail.other.count }} voucher{{ detail.other.count|pluralize }}</p>
+            {% endif %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"detail"|default:"The breakdown could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+      </div>
+
+      {# ── middle: one breakdown line at a time, then the book's own check ── #}
+      <div class="ab-middle">
+        <section class="ab-panel ab-details" data-ab-rotation>
+          <div class="ab-panel__head">
+            <h3>Breakdown detail</h3>
+            {% if detail and detail.buckets|length > 1 %}<span class="ab-details__auto" data-ab-counter>1 / {{ detail.buckets|length }}</span>{% endif %}
+          </div>
+          {% if detail and detail.buckets|length > 1 %}<div class="ab-stage__progress" aria-hidden="true"><i class="ab-stage__fill" data-ab-progress style="width: 0%"></i></div>{% endif %}
+          <div class="ab-panel__body ab-details__body">
+            {% if detail %}
+            {% for bucket in detail.buckets %}
+            <div class="ab-detail" data-ab-stage data-bucket="{{ bucket.key }}"{% if not forloop.first %} hidden{% endif %}>
+              <span class="ab-field__label">Line</span>
+              <h4 class="ab-detail__title"><i class="ab-detail__swatch" data-bucket="{{ bucket.key }}"></i>{{ bucket.label }}</h4>
+              <div class="ab-fields">
+                <div class="ab-field"><span class="ab-field__label">Amount</span><span class="ab-field__value">{% if bucket.has_source %}{{ bucket.amount|money_full }}{% else %}Not kept{% endif %}</span></div>
+                <div class="ab-field"><span class="ab-field__label">Vouchers</span><span class="ab-field__value">{{ bucket.count }}</span></div>
+              </div>
+              <p class="ab-detail__note">{{ bucket.note }}</p>
+              {% if bucket.heads %}
+              <table class="ab-table ab-table--tight"><tbody>
+                {% for head in bucket.heads|slice:":7" %}<tr><td>{{ head.name }}</td><td class="ab-right">{{ head.amount|money_full }}</td></tr>{% endfor %}
+              </tbody></table>
+              {% if bucket.heads|length > 7 %}<p class="ab-more">+{{ bucket.heads|length|add:"-7" }} more head{{ bucket.heads|length|add:"-7"|pluralize }}</p>{% endif %}
+              {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"detail"|default:"The breakdown could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section class="ab-panel ab-recon">
+          <div class="ab-panel__head"><h3>The book's own check</h3></div>
+          <div class="ab-panel__body">
+            {% if headline %}
+            {% with r=headline.reconciliation %}
+            <table class="ab-table ab-table--tight ab-recon__table"><tbody>
+              <tr><td>Cash in</td><td class="ab-right">{{ r.cash_in|money_full }}</td></tr>
+              <tr><td>− Spent, approved</td><td class="ab-right">{{ r.cash_out|money_full }}</td></tr>
+              <tr><td>− Awaiting approval</td><td class="ab-right">{{ r.awaiting_approval|money_full }}</td></tr>
+              <tr><td>− Advances out with people</td><td class="ab-right">{{ r.advance_given|money_full }}</td></tr>
+              <tr><td>+ Owed to people</td><td class="ab-right">{{ r.owed_to_people|money_full }}</td></tr>
+              <tr class="ab-recon__result"><td>= Cash in hand</td><td class="ab-right">{% if headline.in_hand_negative %}−{% endif %}{{ headline.cash_in_hand|money_full|cut:"-" }}</td></tr>
+            </tbody></table>
+            <p class="ab-recon__verdict {% if r.balances %}ab-recon__verdict--ok{% else %}ab-recon__verdict--bad{% endif %}">
+              {% if r.balances %}The book balances: cash in less spending, advances and what is owed comes to the cash in hand exactly.{% else %}The book is out by {% if r.difference < 0 %}−{% endif %}{{ r.difference|money_full|cut:"-" }}.{% endif %}
+            </p>
+            {% endwith %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"headline"|default:"The cash summary could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+      </div>
+
+      {# ── right: the lists ────────────────────────────────────────── #}
+      <div class="ab-tables">
+        <section class="ab-panel">
+          <div class="ab-panel__head"><h3>Imprest issued</h3>{% if imprest %}<span class="ab-panel__total"><span class="ab-panel__total-label">Total</span> {{ imprest.total|money_full }}</span>{% endif %}</div>
+          <div class="ab-panel__body">
+            {% if imprest %}
+              {% if imprest.rows %}
+              <table class="ab-table">
+                <thead><tr><th>Card</th><th class="ab-right">Amount</th><th class="ab-right">Loaded on</th></tr></thead>
+                <tbody>
+                  {% for row in imprest.rows|slice:":5" %}<tr><td>{{ row.name }}</td><td class="ab-right">{{ row.amount|money_full }}</td><td class="ab-right">{{ row.last_updated|day_label }}</td></tr>{% endfor %}
+                </tbody>
+              </table>
+              {% if imprest.count > 5 %}<p class="ab-more">Showing the 5 most recent of {{ imprest.count }}</p>{% endif %}
+              {% else %}
+              <p class="ab-empty">No imprest card was loaded in this period.</p>
+              {% endif %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"imprest"|default:"The imprest cards could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section class="ab-panel">
+          <div class="ab-panel__head"><h3>Pending expenses from HO</h3>{% if pending %}<span class="ab-panel__total"><span class="ab-panel__total-label">Total</span> {{ pending.total|money_full }}</span>{% endif %}</div>
+          <div class="ab-panel__body">
+            {% if pending %}
+              {% if pending.rows %}
+              <table class="ab-table">
+                <thead><tr><th>Item</th><th class="ab-right">Dated</th><th class="ab-right">Amount</th></tr></thead>
+                <tbody>
+                  {% for row in pending.rows|slice:":5" %}<tr><td>{{ row.item }}</td><td class="ab-right">{{ row.entry_date|day_label }}</td><td class="ab-right">{{ row.amount|money_full }}</td></tr>{% endfor %}
+                </tbody>
+              </table>
+              {% if pending.count > 5 %}<p class="ab-more">Showing the 5 most recent of {{ pending.count }}</p>{% endif %}
+              {% else %}
+              <p class="ab-empty">Nothing waiting. All {{ pending.sent_bunches }} bunch{{ pending.sent_bunches|pluralize:"es" }} have gone to head office.</p>
+              {% endif %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"pending_ho"|default:"The pending list could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section class="ab-panel">
+          <div class="ab-panel__head"><h3>Salary advance</h3>{% if salary %}<span class="ab-panel__total"><span class="ab-panel__total-label">Total</span> {{ salary.total|money_full }}</span>{% endif %}</div>
+          <div class="ab-panel__body">
+            {% if salary %}
+              {% if salary.rows %}
+              <table class="ab-table">
+                <thead><tr><th>Voucher</th><th class="ab-right">Amount</th><th class="ab-right">Dated</th></tr></thead>
+                <tbody>
+                  {% for row in salary.rows|slice:":5" %}<tr><td>{{ row.description }}</td><td class="ab-right">{{ row.amount|money_full }}</td><td class="ab-right">{{ row.entry_date|day_label }}</td></tr>{% endfor %}
+                </tbody>
+              </table>
+              {% if salary.count > 5 %}<p class="ab-more">Showing the 5 most recent of {{ salary.count }}</p>{% endif %}
+              {% else %}
+              <p class="ab-empty">No salary advance in this period.</p>
+              {% endif %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"salary"|default:"The salary advances could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section class="ab-panel">
+          {# No panel-level total: each column states its own, and the two are never added. #}
+          <div class="ab-panel__head"><h3>Cash out with people</h3>{% if cash_issued %}<span class="ab-panel__total">{{ cash_issued.holders.holding.people }} holding · {{ cash_issued.holders.owed.people }} owed</span>{% endif %}</div>
+          <div class="ab-panel__body">
+            {% if cash_issued %}
+            {% with holders=cash_issued.holders %}
+            <div class="ab-people">
+              <div class="ab-people__col">
+                <p class="ab-subhead">Out with people · {{ holders.holding.total|money_full }}</p>
+                {% if holders.holding.rows %}
+                <table class="ab-table">
+                  <thead><tr><th>Name</th><th class="ab-right">Amount</th><th class="ab-right">Last cleared</th></tr></thead>
+                  <tbody>
+                    {% for row in holders.holding.rows|slice:":6" %}<tr><td>{{ row.name }}</td><td class="ab-right">{{ row.amount|money_full }}</td><td class="ab-right">{{ row.last_updated|day_label }}</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+                {% if holders.holding.people > 6 %}<p class="ab-more">+{{ holders.holding.people|add:"-6" }} more</p>{% endif %}
+                {% else %}
+                <p class="ab-empty">Nobody is holding the factory's cash.</p>
+                {% endif %}
+              </div>
+              {% if holders.owed.people > 0 %}
+              <div class="ab-people__col">
+                <p class="ab-subhead">Owed back to people · {{ holders.owed.total|money_full }}</p>
+                <table class="ab-table">
+                  <thead><tr><th>Name</th><th class="ab-right">Amount</th><th class="ab-right">Last cleared</th></tr></thead>
+                  <tbody>
+                    {% for row in holders.owed.rows|slice:":6" %}<tr><td>{{ row.name }}</td><td class="ab-right">{{ row.amount|money_full }}</td><td class="ab-right">{{ row.last_updated|day_label }}</td></tr>{% endfor %}
+                  </tbody>
+                </table>
+                {% if holders.owed.people > 6 %}<p class="ab-more">+{{ holders.owed.people|add:"-6" }} more</p>{% endif %}
+              </div>
+              {% endif %}
+            </div>
+            <p class="ab-masked">Names are hidden on this screen. The figures are complete.</p>
+            {% endwith %}
+            {% else %}
+            <div class="ops-unread"><b>Not read</b>{{ meta.reasons|get:"cash_issued"|default:"The advance holders could not be read." }}</div>
+            {% endif %}
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  {% include "boards/fragments/_meta.html" %}
+</div>
+{% endwith %}

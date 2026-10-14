@@ -1,0 +1,64 @@
+{% extends "support/base.html" %}
+{% load support_tags %}
+
+{% block page_head %}
+  <div class="page-head">
+    <div>
+      <h1>JI dashboards</h1>
+      <p class="page-head__sub">The JI Factory app's control boards, read live from its database and SAP. Each board refreshes by itself while it's open.</p>
+    </div>
+    <div class="page-head__actions">
+      <a class="button button--primary" href="{% url 'boards:carousel' %}">{% icon "monitor" 16 %}Open the wall carousel</a>
+    </div>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="dash-grid" aria-label="Boards">
+  {% for item in boards %}
+    <article class="card dash-card">
+      <span class="dash-card__icon" aria-hidden="true">{% icon item.slide.icon 22 %}</span>
+      <div class="dash-card__body">
+        <h2 class="dash-card__title"><a href="{{ item.url }}">{{ item.slide.label }}</a></h2>
+        <p class="dash-card__text">{{ item.slide.description }}</p>
+      </div>
+      <div class="dash-card__actions">
+        <a class="button button--small" href="{{ item.url }}">Open</a>
+        <a class="button button--ghost button--small" href="{{ item.screen_url }}" target="_blank" rel="noopener">{% icon "maximize" 14 %}Full screen</a>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+
+<section class="card card--flush" aria-labelledby="built-title">
+  <header class="card__head">
+    <div>
+      <h2 class="card__title" id="built-title">{% icon "layers" 16 %}Built boards</h2>
+      <p class="card__sub">Boards composed in the factory's dashboard builder and flagged onto the wall rotation.</p>
+    </div>
+  </header>
+  {% if built %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th scope="col">Board</th><th scope="col"><span class="visually-hidden">Open</span></th></tr></thead>
+      <tbody>
+        {% for board in built %}
+          <tr>
+            <td><a href="{{ board.url }}"><strong>{{ board.name }}</strong></a></td>
+            <td class="num"><a class="button button--small" href="{{ board.url }}">Open</a> <a class="button button--ghost button--small" href="{{ board.screen_url }}" target="_blank" rel="noopener">Full screen</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  {% else %}
+    {% include "support/partials/empty.html" with icon_name="layers" message="No built board is on the rotation. Boards composed in the factory's dashboard builder appear here once they're published and flagged for the carousel." %}
+  {% endif %}
+</section>
+
+<div class="callout callout--info">
+  {% icon "info" 16 %}
+  <p>
+    For a wall screen: sign in with an account that can see the dashboards, open the wall carousel and press <strong>F</strong> for full screen.
+    {% if is_support_admin %}Choose who can see the dashboards in <a href="{% url 'support:manage-people' %}?role=dashboards">People and roles</a>.{% endif %}
+  </p>
+</div>
+{% endblock %}

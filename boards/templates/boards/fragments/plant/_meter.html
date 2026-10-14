@@ -1,0 +1,9 @@
+{% comment %}
+  OpsMeter: one quantity split into its parts on one scale. A positive part
+  is never narrower than the bar is tall, so "almost none" stays visible; a
+  zero-width part is a disclosure in the legend, not a slice.
+{% endcomment %}
+<div>
+  <div class="ops-meter">{% for part in viz.segments %}<i class="ops-f-{{ part.fill }}" style="width: {{ part.pct }}%;{% if part.visible %} min-width: var(--meter-h);{% endif %}{% if part.delay %} animation-delay: {{ part.delay }}s;{% endif %}"></i>{% endfor %}</div>
+  {% if viz.keys %}<div class="ops-mkey">{% for part in viz.keys %}<span class="ops-k-{{ part.fill }}">{{ part.label }}{% if part.figure %}<b>{{ part.figure }}</b>{% endif %}</span>{% endfor %}</div>{% endif %}
+</div>

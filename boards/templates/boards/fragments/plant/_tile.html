@@ -1,0 +1,19 @@
+{% comment %}
+  OpsGroup: four fixed rows, name and pill, subtitle (rendered even empty, to
+  hold the grid row), figure and unit, visualisation. A tile that could not
+  be read keeps its name and its place, wears a grey "not read" pill and
+  says why where the figure would be.
+{% endcomment %}
+<div class="ops-grp{% if tile.unread %} pb-unread{% endif %}" data-tile="{{ tile.key }}">
+  <div class="ops-grow">
+    <b class="ops-nm">{{ tile.name }}</b>
+    {% if tile.tag %}<span class="ops-tag ops-t-{{ tile.tag.tone }}">{{ tile.tag.label }}</span>{% endif %}
+  </div>
+  {% if tile.unread %}
+  <div class="ops-unread"><b>Not read</b>{{ tile.unread }}</div>
+  {% else %}
+  <div class="ops-sub">{{ tile.sub }}</div>
+  <div class="ops-val"><b>{{ tile.value }}</b>{% if tile.unit %}<u>{{ tile.unit }}</u>{% endif %}</div>
+  <div class="ops-viz">{% if tile.viz.kind == "bars" %}{% include "boards/fragments/plant/_bars.html" with viz=tile.viz %}{% elif tile.viz %}{% include "boards/fragments/plant/_meter.html" with viz=tile.viz %}{% endif %}</div>
+  {% endif %}
+</div>

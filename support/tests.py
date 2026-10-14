@@ -1505,6 +1505,45 @@ class ManageStructureTests(SupportTestCase):
         self.client.post(url, {"revoke": self.bob.pk})
         self.assertFalse(SupportAdministrator.objects.filter(user=self.bob).exists())
 
+    def test_dashboard_access_is_given_and_taken_in_people_and_roles(self):
+        from boards.access import can_view_dashboards
+
+        url = reverse("support:manage-dashboard-access")
+        page = self.client.get(reverse("support:manage-people"))
+        self.assertContains(page, "Give dashboard access")
+        self.assertContains(page, "Can see (superuser)")
+
+        response = self.client.post(url, {"person": "Alice@jivo.in"}, follow=True)
+        self.assertContains(response, "can now see the JI dashboards")
+        self.assertTrue(can_view_dashboards(User.objects.get(pk=self.alice.pk)))
+
+        page = self.client.get(reverse("support:manage-people"), {"role": "dashboards"})
+        self.assertEqual({person.email for person in page.context["page"].object_list}, {"alice@jivo.in", "root@jivo.in"})
+        self.assertContains(page, "Remove dashboards")
+
+        # The Dashboard section appears for her.
+        self.client.force_login(self.alice)
+        titles = [section["title"] for section in self.client.get("/").context["nav_sections"]]
+        self.assertIn("Dashboard", titles)
+        self.assertEqual(self.client.post(url, {"person": "bob@jivo.in"}).status_code, 403)
+
+        self.client.force_login(self.admin)
+        response = self.client.post(url, {"revoke": self.alice.pk}, follow=True)
+        self.assertContains(response, "can no longer see the JI dashboards")
+        self.assertFalse(can_view_dashboards(User.objects.get(pk=self.alice.pk)))
+
+        # A staff role given in /admin/ keeps access; the page says so.
+        from django.contrib.auth.models import Group
+
+        self.bob.groups.add(Group.objects.get(name="Dashboard viewer"))
+        page = self.client.get(reverse("support:manage-people"), {"q": "bob"})
+        self.assertContains(page, "Can see (staff role)")
+        response = self.client.post(url, {"person": "bob@jivo.in"}, follow=True)
+        self.assertContains(response, "can already see the JI dashboards")
+
+        response = self.client.post(url, {"person": "nobody@jivo.in"}, follow=True)
+        self.assertContains(response, "No account has the email nobody@jivo.in")
+
     def test_settings(self):
         page = self.client.get(reverse("support:manage-settings"))
         self.assertContains(page, "SLA deadlines")

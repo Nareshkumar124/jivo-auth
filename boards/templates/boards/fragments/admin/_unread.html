@@ -1,0 +1,6 @@
+{% comment %}
+  A tile whose section is None. The figure above it is already a rule; this
+  says why, so an unreadable tile can never be read as a zero.
+  Include with reason=<meta.reasons entry> default=<the factory's wording>.
+{% endcomment %}
+<div class="ops-unread adm-unread" title="{{ reason|default:default }}"><b>Not read</b><span>{{ reason|default:default }}</span></div>

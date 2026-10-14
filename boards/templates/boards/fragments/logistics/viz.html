@@ -1,0 +1,62 @@
+{% comment %}
+  OpsViz: the four drawings a tile can carry, from the geometry the service
+  precomputed (boards.services.logistics.meter/bars/pair/duo/matrix). Colour
+  is always a class -- a tint of the band's own hue by weight (main, light,
+  mute) -- never an inline hex. Widths are written with stringformat so a
+  locale can never turn "37.52%" into "37,52%".
+{% endcomment %}
+{% if viz.kind == "meter" %}
+{# A composition bar: one quantity split into its parts. A sliver gets the bar's own height as a floor, so 0.9% still shows as a dot. #}
+<div class="lc-meter">
+  <div class="ops-meter">{% for segment in viz.segments %}<i class="ops-f-{{ segment.fill }}" style="width: {{ segment.width|stringformat:'.2f' }}%;{% if segment.sliver %} min-width: var(--meter-h);{% endif %}{% if segment.delay %} animation-delay: {{ segment.delay }};{% endif %}"></i>{% endfor %}</div>
+  {% if viz.legend %}
+  <div class="ops-mkey">{% for segment in viz.legend %}<span class="ops-k-{{ segment.fill }}">{{ segment.label }}{% if segment.figure %}<b>{{ segment.figure }}</b>{% endif %}</span>{% endfor %}</div>
+  {% endif %}
+</div>
+{% elif viz.kind == "bars" %}
+{# The last seven days, today picked out. Heights are a share of the best day shown; a day of nothing is an empty column with no figure over it. #}
+<div class="lc-bars">
+  <div class="ops-bars">{% for day in viz.days %}<div{% if day.now %} class="ops-now"{% endif %}>{% if day.value %}<em class="ops-bval">{{ day.value }}</em>{% endif %}<i style="height: {{ day.height|stringformat:'.2f' }}%; animation-delay: {{ day.delay }};"></i></div>{% endfor %}</div>
+  <div class="ops-blab">{% for day in viz.days %}<span{% if day.now %} class="ops-now"{% endif %}>{{ day.label }}</span>{% endfor %}</div>
+</div>
+{% elif viz.kind == "pair" %}
+{# Two figures on one scale, so the visible gap is the difference and nothing else. #}
+<div class="lc-pair">
+  <div class="ops-pair">
+    {% for row in viz.rows %}
+    <div class="ops-prow">
+      <em title="{{ row.label }}">{{ row.label }}</em>
+      <div class="b"><i class="ops-f-{{ row.fill }}" style="width: {{ row.width|stringformat:'.2f' }}%"></i></div>
+      <strong>{{ row.figure }}</strong>
+    </div>
+    {% endfor %}
+  </div>
+  {% if viz.note %}
+  <div class="ops-mkey"><span class="ops-k-{{ viz.note.fill }}">{{ viz.note.label }}{% if viz.note.figure %}<b>{{ viz.note.figure }}</b>{% endif %}</span></div>
+  {% endif %}
+</div>
+{% elif viz.kind == "duo" %}
+{# Two figures side by side, divided: they share no scale, so they are not a meter. #}
+<div class="ops-duo">
+  {% for item in viz.items %}
+  <div><span class="k">{{ item.k }}</span><span class="v">{{ item.v }}</span></div>
+  {% endfor %}
+</div>
+{% elif viz.kind == "matrix" %}
+{# Open freight documents by age: bands down, stages across, each aged from its own clock. A column that could not be read is a rule in every cell, never a 0. #}
+<div class="lc-matrix">
+  <table class="ops-matrix">
+    <thead>
+      <tr><th>Days old</th>{% for stage in viz.stages %}<th>{{ stage.label }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for row in viz.rows %}
+      <tr class="{{ row.age_class }}">
+        <th>{{ row.label }}</th>
+        {% for cell in row.cells %}<td>{% if cell.unavailable %}<span class="ops-nil">—</span>{% else %}{{ cell.count }}{% if cell.cash or cell.unpriced %}<em class="ops-cash">{% if cell.cash %}{{ cell.cash }}{% endif %}{% if cell.unpriced %}<i>{% if cell.plus %}+{% endif %}{{ cell.unpriced }} unpriced</i>{% endif %}</em>{% endif %}{% endif %}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

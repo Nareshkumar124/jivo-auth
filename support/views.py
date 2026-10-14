@@ -196,7 +196,7 @@ class HomeView(View):
         return render(
             request,
             "support/dashboard.html",
-            portal_context(request, title="Dashboard", dashboard=build_dashboard(request.user)),
+            portal_context(request, title="Home", dashboard=build_dashboard(request.user)),
         )
 
 

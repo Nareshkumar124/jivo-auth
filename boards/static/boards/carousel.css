@@ -1,0 +1,378 @@
+/* ══════════════════════════════════════════════════════════════
+   BOARD CAROUSEL
+
+   The chrome around somebody else's board. Everything here obeys the
+   operations board's rules rather than inventing its own:
+
+   - sized in `--u`, the scoped root unit `.ops-board` defines, so the strip
+     scales with the screen exactly as the board beneath it does. This file
+     never sets a `rem` or a `px` length for anything a reader looks at.
+   - grey for the part that isn't there, and the condition colours reserved for
+     condition. The rotation state pill is the one place a hue appears, and it
+     is reporting a state — green rotating, amber held — not a domain.
+
+   THE CAROUSEL SHELL CARRIES `.ops-board` ITSELF, and so does each slide inside
+   it. That nesting is intentional: `--u` is defined identically by both, so the
+   strip and the board are drawn to one scale, and the fullscreen rule in
+   `ops-board.css` lands on whichever of the two the browser actually promoted.
+   ══════════════════════════════════════════════════════════════ */
+
+/*
+ * THE STRIP IS LAID OVER THE BOARD, NEVER ABOVE IT.
+ *
+ * This is the whole reason the shell is a single full-height row rather than a
+ * strip row plus a board row. Every board here sizes itself in `vh` — the plant
+ * board's four bands are `min(0.833vw, 1.2vh)` units and divide the VIEWPORT
+ * exactly, with nothing below the fold. Give it a row that is the viewport
+ * minus a control strip and it still lays out for the whole viewport: the
+ * arithmetic does not know the strip exists, and the last band goes off the
+ * bottom edge. Any chrome that takes height is a band lost, whatever its size.
+ *
+ * So the strip floats. The board gets the entire screen and is drawn exactly as
+ * it is at its own address, and the controls sit on top of its header for the
+ * few seconds anybody is actually looking at them.
+ */
+.bcx {
+  position: relative;
+  display: grid;
+  /* One row, the whole height. `minmax(0, 1fr)` and not `1fr`: without the zero
+     floor the row takes its minimum content size, and a row sized by a full
+     board cannot shrink back to the viewport in fullscreen. */
+  grid-template-rows: minmax(0, 1fr);
+}
+
+/* Outside fullscreen the board sizes to its own content, exactly as it does at
+   its own address; in fullscreen `.ops-wall` hands it the whole screen. */
+.bcx-stage {
+  min-height: 0;
+  min-width: 0;
+}
+
+/*
+ * SHRINK TO FIT A TELEVISION THAT CROPS WHAT IT IS SENT.
+ *
+ * See `OVERSCAN_CHOICES` for what overscan is and why the real cure is the TV's
+ * own picture setting. Where that cannot be reached, the board is drawn at the
+ * full viewport and then scaled down into the part of it the panel actually
+ * displays.
+ *
+ * SCALED, NOT PADDED, and the distinction is the whole reason this works. Every
+ * board here sizes itself in `vh` — the plant board's four bands divide the
+ * VIEWPORT exactly. Pad the box and the board lays out for a height it no
+ * longer has and pushes its last band off the bottom, which is precisely the
+ * bug the carousel's floating strip exists to avoid. A transform changes no
+ * layout at all: the board still believes it has the whole screen, and every
+ * proportion inside it is preserved.
+ *
+ * Applied only when it has been asked for — see `data-fit` on the page for why
+ * a scale of 1 is not the same as no transform.
+ */
+.bcx[data-fit='on'] .bcx-stage {
+  transform: scale(var(--bcx-fit, 1));
+  transform-origin: center center;
+}
+
+/* The controls move inside the same safe area, or the setting would rescue the
+   board and leave its own strip being eaten. */
+.bcx[data-fit='on'] .bcx-strip {
+  inset: var(--bcx-pad, 0) var(--bcx-pad, 0) auto;
+}
+
+/* ───────── the strip ───────── */
+
+.bcx-strip {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 30;
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: calc(0.5 * var(--u));
+  /*
+   * Transparent to the pointer, so the board underneath keeps every click the
+   * strip is merely floating over — only the control row itself takes events,
+   * and only while it is visible.
+   */
+  pointer-events: none;
+}
+
+/*
+ * The control row: a panel floating over the board's own header.
+ *
+ * It needs a ground of its own precisely because it is floating — the board's
+ * topbar is underneath it, and two rows of text sharing one set of pixels is
+ * unreadable. Opaque enough to win that, blurred so it still reads as laid over
+ * something rather than as part of the board.
+ *
+ * It fades rather than being removed, and `visibility` follows the fade so a
+ * hidden control cannot be reached by tab. `pointer-events` comes back on here
+ * (the strip around it stays transparent) so that a faded row passes clicks
+ * through to the board rather than swallowing them.
+ */
+.bcx-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: calc(0.8 * var(--u));
+  margin: calc(0.5 * var(--u)) calc(1.1 * var(--u)) 0;
+  padding: calc(0.45 * var(--u)) calc(0.7 * var(--u));
+  border: 1px solid var(--hair);
+  border-radius: calc(0.9 * var(--u));
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(calc(0.7 * var(--u)));
+  box-shadow: 0 calc(0.5 * var(--u)) calc(1.6 * var(--u)) rgba(14, 23, 38, 0.13);
+  pointer-events: auto;
+  transition:
+    opacity 260ms ease,
+    visibility 260ms ease;
+}
+
+.bcx-strip[data-visible='no'] .bcx-row {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ───────── rotation state ───────── */
+
+.bcx-state {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.28 * var(--u)) calc(0.75 * var(--u));
+  border-radius: 999px;
+  font-size: calc(1.15 * var(--u));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  background: rgba(4, 120, 87, 0.1);
+  color: var(--ok1);
+}
+
+.bcx-state i {
+  width: calc(0.6 * var(--u));
+  height: calc(0.6 * var(--u));
+  border-radius: 999px;
+  background: currentColor;
+}
+
+/* Held is a state somebody chose, not a fault — amber, never red. */
+.bcx-state[data-paused='yes'] {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--wa1);
+}
+
+/* ───────── which board, and which are coming ───────── */
+
+.bcx-dots {
+  display: flex;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+  min-width: 0;
+  overflow: hidden;
+}
+
+.bcx-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(0.45 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(0.8 * var(--u));
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: calc(1.2 * var(--u));
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+/* The leading dot, drawn before the label so the row reads as a sequence. */
+.bcx-dot::before {
+  content: '';
+  width: calc(0.65 * var(--u));
+  height: calc(0.65 * var(--u));
+  border-radius: 999px;
+  background: var(--mu2);
+}
+
+.bcx-dot:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+
+.bcx-dot[data-active='yes'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.bcx-dot[data-active='yes']::before {
+  background: #fff;
+}
+
+/* ───────── the countdown ───────── */
+
+.bcx-count {
+  display: grid;
+  justify-items: end;
+  line-height: 1.1;
+  font-size: calc(1.5 * var(--u));
+  font-weight: 700;
+  color: var(--ink);
+  /* The seconds tick down once a second; without tabular figures the whole
+     block shifts left and right as the digits change width. */
+  font-variant-numeric: tabular-nums;
+}
+
+.bcx-count em {
+  font-size: calc(1.05 * var(--u));
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
+/* ───────── controls ───────── */
+
+.bcx-controls {
+  display: flex;
+  align-items: center;
+  gap: calc(0.35 * var(--u));
+}
+
+.bcx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(2.4 * var(--u));
+  height: calc(2.4 * var(--u));
+  border: 1px solid var(--hair);
+  border-radius: calc(0.6 * var(--u));
+  background: #fff;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease;
+}
+
+.bcx-btn:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.bcx-btn svg {
+  width: calc(1.3 * var(--u));
+  height: calc(1.3 * var(--u));
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The play triangle is the one solid glyph here. */
+.bcx-btn svg path[d^='M7 4v16'] {
+  fill: currentColor;
+}
+
+.bcx-dwell select {
+  height: calc(2.4 * var(--u));
+  padding: 0 calc(0.5 * var(--u));
+  border: 1px solid var(--hair);
+  border-radius: calc(0.6 * var(--u));
+  background: #fff;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: calc(1.15 * var(--u));
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ───────── progress ───────── */
+
+/*
+ * Pinned to the very top edge, and the one thing that never fades.
+ *
+ * On a wall it is the only mark that says this screen is a rotation rather than
+ * a board that happens to have changed while nobody was looking. It sits in the
+ * board's own top padding, so it covers no tile, and it is drawn full-bleed
+ * with square ends — a floating pill up there would read as a control.
+ */
+.bcx-progress {
+  height: calc(0.3 * var(--u));
+  background: rgba(14, 23, 38, 0.1);
+  overflow: hidden;
+}
+
+.bcx-progress i {
+  display: block;
+  height: 100%;
+  background: var(--ok1);
+  /* Matches the tick, so the bar creeps rather than stepping. Not applied while
+     held — a paused bar should sit still, and an eased width would animate its
+     way back to zero on the next advance. */
+  transition: width 250ms linear;
+}
+
+.bcx-progress[data-paused='yes'] i {
+  background: var(--wa1);
+  transition: none;
+}
+
+/* ───────── waiting and empty states ───────── */
+
+.bcx-loading,
+.bcx-empty {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: calc(0.6 * var(--u));
+  padding: calc(6 * var(--u)) calc(2 * var(--u));
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.bcx-loading span {
+  font-size: calc(1.5 * var(--u));
+  font-weight: 600;
+}
+
+.bcx-empty b {
+  font-size: calc(2.4 * var(--u));
+  color: var(--ink);
+}
+
+.bcx-empty p {
+  max-width: calc(46 * var(--u));
+  font-size: calc(1.4 * var(--u));
+  line-height: 1.5;
+}
+
+/* Visually hidden, still read aloud — the dwell select's label. */
+.bcx-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Nobody stands at a wall screen, so nothing here may depend on motion to be
+ * understood — but a reader who asks for less of it gets it: the progress bar
+ * jumps between ticks instead of creeping, and the strip appears rather than
+ * fades. The rotation itself is the content, not decoration, and stays.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .bcx-row,
+  .bcx-progress i {
+    transition: none;
+  }
+}

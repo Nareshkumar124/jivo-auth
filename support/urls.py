@@ -55,6 +55,7 @@ urlpatterns = [
     path("manage/teams/<int:pk>/members/<int:membership_id>/", manage_views.MemberUpdateView.as_view(), name="manage-team-member"),
     path("manage/people/", manage_views.PeopleView.as_view(), name="manage-people"),
     path("manage/people/administrators/", manage_views.AdministratorView.as_view(), name="manage-administrators"),
+    path("manage/people/dashboards/", manage_views.DashboardAccessView.as_view(), name="manage-dashboard-access"),
     path("manage/reports/", manage_views.ReportsView.as_view(), name="manage-reports"),
     path("manage/activity/", manage_views.ActivityView.as_view(), name="manage-activity"),
     path("manage/settings/", manage_views.SettingsView.as_view(), name="manage-settings"),

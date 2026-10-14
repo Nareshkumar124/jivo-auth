@@ -1,0 +1,77 @@
+/*
+ * The logistics board, for the wall.
+ *
+ * Everything this board draws is already in ops-board.css, which is the
+ * factory logistics board's own stylesheet copied verbatim: the bands, the
+ * tiles, the meters, the bars, the matrix and the people strip. This file
+ * only covers what that sheet never had to draw. Every length is
+ * `calc(N * var(--u))`, like the rest of the board.
+ */
+
+/*
+ * A tile whose feed could not be read.
+ *
+ * The factory's own "no source" tile is a rule where the figure goes and a
+ * note underneath, and this is the same tile with "not read" in the pill:
+ * an unreadable feed and an empty warehouse must not look the same, and
+ * neither may wear a condition colour. The shared `.ops-unread` block is
+ * sized for a whole panel (centred, padded, a heading); inside a tile's
+ * visualisation row it is set like the board's notes instead, and clipped
+ * to three lines so a long driver message cannot run out of the card.
+ */
+.lc-board .ops-viz > .ops-unread {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  padding: 0;
+  text-align: left;
+  font-size: calc(0.95 * var(--u));
+  line-height: 1.3;
+  font-weight: 500;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A tall tile's reason sits at the top of its span, as its table would. */
+.lc-board .ops-viz.ops-tall > .ops-unread {
+  margin-top: calc(0.2 * var(--u));
+}
+
+/*
+ * The transport account's matrix, with a warning under it.
+ *
+ * The matrix is four rows of two lines and was drawn to fill the card. The
+ * one warning the factory still prints under it ("Freight account missing
+ * MART — could not be read.") then runs past the card's foot, and the
+ * card's clip cuts it mid-sentence: "could not be". Only while that warning
+ * is there, the table gives up its banding gaps and some padding, so the
+ * whole sentence lands inside the card. At rest the table is untouched.
+ */
+.lc-board .lc-matrix:has(+ .ops-note) .ops-matrix th,
+.lc-board .lc-matrix:has(+ .ops-note) .ops-matrix td {
+  padding-top: calc(0.04 * var(--u));
+  padding-bottom: calc(0.04 * var(--u));
+  line-height: 0.98;
+}
+.lc-board .lc-matrix:has(+ .ops-note) .ops-matrix tbody tr + tr th,
+.lc-board .lc-matrix:has(+ .ops-note) .ops-matrix tbody tr + tr td {
+  border-top-width: calc(0.08 * var(--u));
+}
+.lc-board .lc-matrix:has(+ .ops-note) .ops-matrix .ops-cash {
+  line-height: 1;
+}
+.lc-board .ops-viz > .lc-matrix + .ops-note {
+  margin-top: calc(0.15 * var(--u));
+  line-height: 1.2;
+}
+
+/*
+ * The note under a pair of figures. The factory sets this one gap inline
+ * (Pending dispatch's "feed truncated" line), because a duo has no legend
+ * row to carry a margin the way a meter does.
+ */
+.lc-board .ops-viz > .ops-duo + .ops-note {
+  margin-top: calc(0.5 * var(--u));
+}

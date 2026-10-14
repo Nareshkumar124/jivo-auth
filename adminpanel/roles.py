@@ -36,6 +36,15 @@ DEFAULT_ROLES = {
             "audit.view_auditevent",
         ],
     },
+    # Sees the JI dashboards (the ticket system's Dashboard section, and the
+    # wall carousel); nothing in this admin. Also given per person in the
+    # ticket system: Administration → People and roles.
+    "Dashboard viewer": {
+        "description": "See the JI dashboards at /dashboards/, including the wall carousel.",
+        "permissions": [
+            "boards.view_dashboards",
+        ],
+    },
 }
 
 

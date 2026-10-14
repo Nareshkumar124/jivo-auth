@@ -1,0 +1,37 @@
+{% comment %}
+  OpsPeople: who is on the band, pinned to its right. Employees over their
+  daily salary, labour over its daily cost. A missing head count is a rule,
+  never a zero, and the split bar is drawn only when both halves are known
+  (half a pair would misstate the ratio it exists to show). The factory
+  dropped the reason line under the strip at the floor's request; the
+  service still sends it as `note`, and it is not drawn.
+{% endcomment %}
+{% if strip %}
+<div class="ops-people">
+  <div class="ops-pcap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3.2 2.7-4.8 6-4.8s6 1.6 6 4.8"/><path d="M16.5 11.5a2.6 2.6 0 1 0 0-5.2"/><path d="M17 14.4c2.4.4 4 1.9 4 4.6"/></svg>On shift<b>{% if strip.on_shift is None %}<span class="ops-nil">—</span>{% else %}{{ strip.on_shift }}{% endif %}</b></div>
+
+  <div class="ops-prole" style="--pk: var(--d1)">
+    <div class="r">
+      <span class="k">Employees</span>
+      <span class="n">{% if strip.employees is None %}<span class="ops-nil">—</span>{% else %}{{ strip.employees }}{% endif %}</span>
+    </div>
+    <div class="s">{{ strip.employee_cost_text|default:"Cost unavailable" }}</div>
+  </div>
+
+  <div class="ops-prole" style="--pk: var(--d3)">
+    <div class="r">
+      <span class="k">Labour</span>
+      <span class="n">{% if strip.labour is None %}<span class="ops-nil">—</span>{% else %}{{ strip.labour }}{% endif %}</span>
+    </div>
+    <div class="s">{{ strip.labour_cost_text|default:"Cost unavailable" }}</div>
+  </div>
+
+  {% if strip.split %}
+  <div class="ops-psplit"><i class="ops-f-main" style="width: {{ strip.split.employees|stringformat:'.2f' }}%"></i><i class="ops-f-light" style="width: {{ strip.split.labour|stringformat:'.2f' }}%"></i></div>
+  {% endif %}
+</div>
+{% else %}
+<div class="ops-people">
+  <p class="ops-note">Team figures were not composed.</p>
+</div>
+{% endif %}
