@@ -274,6 +274,13 @@ def _int(value: Any) -> int:
         return 0
 
 
+def _col(row: Dict[str, Any], name: str) -> Any:
+    """A SAP column by the alias the SQL wrote. HANA folds an unquoted alias
+    to upper case (``AS docs`` comes back as ``DOCS``); a quoted one keeps
+    its spelling."""
+    return row[name] if name in row else row.get(name.upper())
+
+
 def _half_up(number: float, places: int) -> float:
     """``number`` to ``places``, a tie rounded away from zero, as the page
     rounds: ``toLocaleString`` and ``Math.round`` both send 32.5 to 33,
@@ -1195,7 +1202,7 @@ ORDER BY "DaysSinceLastMovement" DESC, "Value" DESC, "ItemCode", "WhsCode"
             """
             # header_filter is bound once inside the CTE and once outside.
             for row in hana.rows(sql, [*chunk, *chunk]):
-                weights[int(row["doc_entry"])] = _f(row.get("total_weight"))
+                weights[int(_col(row, "doc_entry"))] = _f(_col(row, "total_weight"))
         return weights
 
     def _selected_plans(self, company_id: int, *, date_from: date, date_to: date, statuses: Optional[Sequence[str]], limit: int) -> List[Dict[str, Any]]:
@@ -1784,12 +1791,12 @@ ORDER BY "DaysSinceLastMovement" DESC, "Value" DESC, "ItemCode", "WhsCode"
         """
         buckets = {b: {"band": b, "documents": 0, "amount": 0.0, "oldest_days": None} for b in (0, *AGE_BANDS)}
         for row in hana.rows(sql, [TRANSPORTER_GROUP_NAME]):
-            b = _int(row.get("band") if "band" in row else row.get("BAND"))
-            oldest = row.get("oldest_days") if "oldest_days" in row else row.get("OLDEST_DAYS")
+            b = _int(_col(row, "band"))
+            oldest = _col(row, "oldest_days")
             buckets[b] = {
                 "band": b,
-                "documents": _int(row.get("docs") if "docs" in row else row.get("DOCS")),
-                "amount": _f(row.get("open_sum") if "open_sum" in row else row.get("OPEN_SUM")),
+                "documents": _int(_col(row, "docs")),
+                "amount": _f(_col(row, "open_sum")),
                 "oldest_days": int(oldest) if oldest is not None else None,
             }
         ordered = [buckets[b] for b in (0, *AGE_BANDS)]
@@ -1823,7 +1830,7 @@ ORDER BY "DaysSinceLastMovement" DESC, "Value" DESC, "ItemCode", "WhsCode"
         """
         buckets = {b: {"band": b, "documents": 0, "outstanding": 0.0, "billed": 0.0, "paid": 0.0, "oldest_days": None} for b in (0, *AGE_BANDS)}
         for row in hana.rows(sql, [TRANSPORTER_GROUP_NAME]):
-            get = lambda key: row.get(key) if key in row else row.get(key.upper())  # noqa: E731
+            get = lambda key: _col(row, key)  # noqa: E731
             b = _int(get("band"))
             oldest = get("oldest_days")
             buckets[b] = {
@@ -1863,7 +1870,7 @@ ORDER BY "DaysSinceLastMovement" DESC, "Value" DESC, "ItemCode", "WhsCode"
               AND V."DocDate" >= ADD_DAYS(CURRENT_DATE, ?)
         """
         row = hana.one(sql, [TRANSPORTER_GROUP_NAME, -days]) or {}
-        get = lambda key: row.get(key) if key in row else row.get(key.upper())  # noqa: E731
+        get = lambda key: _col(row, key)  # noqa: E731
         return {
             "window_days": days,
             "payments": _int(get("payments")),
@@ -2009,7 +2016,7 @@ ORDER BY "DaysSinceLastMovement" DESC, "Value" DESC, "ItemCode", "WhsCode"
             """
             vendors = []
             for row in hana.rows(sql, [TRANSPORTER_GROUP_NAME, OUTWARD_FREIGHT_ACCOUNT, self.month_start, self.today]):
-                get = lambda key: row.get(key) if key in row else row.get(key.upper())  # noqa: E731
+                get = lambda key: _col(row, key)  # noqa: E731
                 vendors.append({
                     "card_code": get("CardCode") or "",
                     "transporter_name": (get("card_name") or "").strip() or (get("CardCode") or "Unassigned"),

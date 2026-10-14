@@ -341,10 +341,11 @@ SAP_DISPATCHED = {103}
 
 
 def bill_weights(sql, params):
+    """As HANA answers: the query's unquoted aliases come back upper case."""
     entries = params[: len(params) // 2]
     pending = "U_Dipatch_Date" in sql
     return [
-        {"doc_entry": d, "doc_num": str(50000 + d), "total_weight": Decimal(BILL_KG[d])}
+        {"DOC_ENTRY": d, "DOC_NUM": str(50000 + d), "TOTAL_WEIGHT": Decimal(BILL_KG[d])}
         for d in entries
         if d in BILL_KG and not (pending and d in SAP_DISPATCHED)
     ]
